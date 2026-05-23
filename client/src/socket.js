@@ -8,7 +8,14 @@ let socket = null;
 export function initSocket() {
   if (socket) return socket;
 
-  socket = io(window.location.origin, {
+  // If we are on Vercel, we need to connect to the Render backend.
+  // Otherwise, fallback to the same origin (local or single-server deployment).
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? 'http://localhost:3000' 
+      : 'https://spyhaz.onrender.com');
+
+  socket = io(backendUrl, {
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,
