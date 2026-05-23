@@ -3,7 +3,7 @@ services:
     name: spyhaz
     env: node
     plan: free
-    buildCommand: "npm install && cd client && npm install && npm run build && cd ../server && npm install"
+    buildCommand: "npm install --production=false && cd client && npm install --production=false && npm run build && cd ../server && npm install"
     startCommand: "cd server && npm start"
     envVars:
       - key: NODE_ENV
