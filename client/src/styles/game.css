@@ -1,0 +1,394 @@
+/* ══════════════════════════════════════════════════════════════
+   GAME SCREEN STYLES
+   ══════════════════════════════════════════════════════════════ */
+
+.game-screen {
+  min-height: 100vh;
+  padding: var(--sp-4);
+  max-width: 1800px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Top Bar ────────────────────────────────────────────────── */
+.game-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--sp-3);
+  animation: slide-down 0.4s ease-out;
+}
+
+.game-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.game-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+/* ── Timer ──────────────────────────────────────────────────── */
+.timer-display {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-xl);
+  color: var(--accent-cyan);
+  text-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+  min-width: 100px;
+  text-align: center;
+}
+
+.timer-display.warning {
+  color: var(--warning);
+  text-shadow: 0 0 15px rgba(255, 214, 0, 0.5);
+}
+
+.timer-display.critical {
+  color: var(--danger);
+  text-shadow: 0 0 15px rgba(255, 23, 68, 0.5);
+  animation: glow-pulse 1s ease-in-out infinite;
+}
+
+.timer-paused {
+  opacity: 0.5;
+}
+
+/* ── Main Content Grid ──────────────────────────────────────── */
+.game-content {
+  display: grid;
+  grid-template-columns: 300px 1fr 320px;
+  gap: var(--sp-4);
+  animation: fade-in 0.4s ease-out;
+  min-height: calc(100vh - 32px);
+}
+
+/* ── Sidebars ─────────────────────────────────────────────────── */
+.game-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.game-sidebar-left {
+  /* Specific left sidebar styles if any */
+}
+
+.game-sidebar-right {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Role Card ──────────────────────────────────────────────── */
+.role-card-container {
+  perspective: 1000px;
+}
+
+.role-card {
+  padding: var(--sp-4);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.role-card-spy {
+  border-color: var(--danger) !important;
+  box-shadow: var(--shadow-card), var(--shadow-danger) !important;
+}
+
+.role-card-spy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255, 23, 68, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.role-card-emoji {
+  font-size: 2.5rem;
+  margin-bottom: var(--sp-3);
+}
+
+.role-card-location {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-xs);
+  color: var(--accent-cyan);
+  margin-bottom: var(--sp-2);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
+.role-card-role {
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.role-card-spy-label {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-sm);
+  color: var(--danger);
+  text-shadow: 0 0 15px rgba(255, 23, 68, 0.6);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── Question Turn Section ──────────────────────────────────── */
+.question-section {
+  padding: var(--sp-4);
+}
+
+.question-status {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--accent-cyan);
+  margin-bottom: var(--sp-3);
+  text-align: center;
+  line-height: 1.8;
+}
+
+.question-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.question-player {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+
+.question-player.asker {
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+}
+
+.question-player.target {
+  background: rgba(124, 77, 255, 0.15);
+  color: var(--accent-purple-light);
+  border: 1px solid rgba(124, 77, 255, 0.3);
+}
+
+.question-target-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.question-target-btn {
+  padding: var(--sp-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  font-weight: 500;
+}
+
+.question-target-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.08);
+  transform: translateX(4px);
+}
+
+/* ── Main Area ──────────────────────────────────────────────── */
+.game-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* ── Location Grid ──────────────────────────────────────────── */
+.location-grid-container {
+  padding: var(--sp-4);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.location-grid-title {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-xs);
+  color: var(--accent-purple-light);
+  margin-bottom: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.location-grid-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-color), transparent);
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  flex: 1;
+  align-content: center;
+}
+
+.location-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: var(--fs-base);
+  transition: all var(--transition-fast);
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.location-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.location-card-emoji {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.location-card-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.location-card.selectable {
+  cursor: pointer;
+}
+
+.location-card.selectable:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 229, 255, 0.15);
+}
+
+.location-card.selected {
+  border-color: var(--accent-cyan) !important;
+  background: rgba(0, 229, 255, 0.15) !important;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.location-card.eliminated {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+
+/* ── Spy Actions ────────────────────────────────────────────── */
+.spy-actions {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 23, 68, 0.2);
+  border-radius: var(--radius-lg);
+}
+
+.spy-guess-count {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--danger);
+}
+
+/* ── Chat Panel (Game) ──────────────────────────────────────── */
+.game-chat {
+  margin-top: auto;
+}
+
+@media (max-width: 1200px) {
+  .game-content {
+    grid-template-columns: 260px 1fr 260px;
+  }
+  .location-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1000px) {
+  .game-content {
+    grid-template-columns: 260px 1fr;
+  }
+  .game-sidebar-right {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    height: 300px; /* fixed height for chat and players at bottom */
+  }
+  .game-sidebar-right > * {
+    flex: 1;
+    min-width: 250px;
+  }
+  .location-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .game-content {
+    grid-template-columns: 1fr;
+  }
+  .game-sidebar-left {
+    order: -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .game-sidebar-left > * {
+    flex: 1;
+    min-width: 200px;
+  }
+  .game-sidebar-right {
+    flex-direction: column;
+    height: auto;
+  }
+  .game-topbar {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+  .location-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .location-card {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .location-card-emoji {
+    font-size: 0.85rem;
+  }
+  .location-card-name {
+    font-size: 0.65rem;
+  }
+}

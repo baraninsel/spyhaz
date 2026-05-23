@@ -1,0 +1,145 @@
+/* ══════════════════════════════════════════════════════════════
+   RESULT SCREEN STYLES
+   ══════════════════════════════════════════════════════════════ */
+
+.result-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-8);
+  text-align: center;
+}
+
+.result-card {
+  max-width: 800px;
+  width: 100%;
+  padding: var(--sp-10);
+  animation: scale-in 0.6s ease-out;
+}
+
+/* ── Winner Announcement ────────────────────────────────────── */
+.result-icon {
+  font-size: 5rem;
+  margin-bottom: var(--sp-6);
+  animation: float 2s ease-in-out infinite;
+}
+
+.result-title {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-lg);
+  margin-bottom: var(--sp-3);
+  line-height: 1.6;
+}
+
+.result-title.spy-wins {
+  color: var(--danger);
+  text-shadow: 0 0 30px rgba(255, 23, 68, 0.5);
+}
+
+.result-title.players-win {
+  color: var(--success);
+  text-shadow: 0 0 30px rgba(0, 230, 118, 0.5);
+}
+
+.result-reason {
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  margin-bottom: var(--sp-8);
+}
+
+/* ── Spy Reveal ─────────────────────────────────────────────── */
+.result-spy-reveal {
+  padding: var(--sp-5);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 23, 68, 0.2);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--sp-6);
+}
+
+.result-spy-label {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--danger);
+  margin-bottom: var(--sp-2);
+  text-transform: uppercase;
+}
+
+.result-spy-name {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Location & Roles ───────────────────────────────────────── */
+.result-location {
+  padding: var(--sp-5);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--sp-6);
+}
+
+.result-location-emoji {
+  font-size: 2.5rem;
+  margin-bottom: var(--sp-2);
+}
+
+.result-location-name {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-sm);
+  color: var(--accent-cyan);
+  margin-bottom: var(--sp-4);
+}
+
+.result-roles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .result-roles {
+    grid-template-columns: 1fr;
+  }
+}
+
+.result-role-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+
+.result-role-item.is-spy {
+  background: rgba(255, 23, 68, 0.1);
+  border: 1px solid rgba(255, 23, 68, 0.2);
+}
+
+.result-role-name {
+  color: var(--text-secondary);
+}
+
+.result-role-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── Actions ────────────────────────────────────────────────── */
+.result-actions {
+  display: flex;
+  gap: var(--sp-4);
+  justify-content: center;
+  margin-top: var(--sp-6);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .result-card { padding: var(--sp-6); }
+  .result-icon { font-size: 3.5rem; }
+  .result-title { font-size: var(--fs-sm); }
+}

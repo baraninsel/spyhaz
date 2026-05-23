@@ -1,0 +1,230 @@
+/* ══════════════════════════════════════════════════════════════
+   LOBBY SCREEN STYLES
+   ══════════════════════════════════════════════════════════════ */
+
+.lobby-screen {
+  min-height: 100vh;
+  padding: var(--sp-6);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.lobby-header {
+  text-align: center;
+  margin-bottom: var(--sp-8);
+  animation: slide-down 0.5s ease-out;
+}
+
+.lobby-title {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-lg);
+  color: var(--accent-cyan);
+  margin-bottom: var(--sp-4);
+}
+
+.room-code-display {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--bg-surface);
+  border: 2px solid var(--accent-cyan);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3) var(--sp-6);
+  box-shadow: var(--shadow-cyan);
+}
+
+.room-code-text {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-2xl);
+  color: var(--accent-cyan);
+  letter-spacing: 6px;
+  min-width: 140px;
+  text-align: center;
+  user-select: none;
+}
+
+.room-code-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.room-code-toggle:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.08);
+}
+
+.room-code-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: var(--fs-base);
+}
+.room-code-copy-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.08);
+}
+
+/* ── Content Grid ───────────────────────────────────────────── */
+.lobby-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--sp-6);
+  animation: slide-up 0.5s ease-out 0.1s both;
+}
+
+.lobby-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.lobby-col.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.lobby-col.gap-4 {
+  gap: var(--sp-4);
+}
+
+.h-full {
+  height: 100%;
+}
+
+/* ── Player List ────────────────────────────────────────────── */
+.lobby-players {
+  padding: var(--sp-5);
+}
+
+.lobby-section-title {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-xs);
+  color: var(--accent-purple-light);
+  margin-bottom: var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* ── Settings Panel ─────────────────────────────────────────── */
+.lobby-settings {
+  padding: var(--sp-5);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.setting-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.setting-display-label {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.setting-display-value {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-xs);
+  color: var(--accent-cyan);
+}
+
+/* ── Editable Settings (Host) ──────────────────────────────── */
+.setting-item-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  transition: border-color var(--transition-fast);
+}
+
+.setting-item-lobby:hover {
+  border-color: var(--accent-cyan);
+}
+
+.setting-item-lobby .setting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-item-lobby .range-slider {
+  margin-top: var(--sp-1);
+}
+
+/* ── Lobby Actions ──────────────────────────────────────────── */
+.lobby-actions-card {
+  padding: var(--sp-4);
+}
+
+.lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ── Chat in Lobby ──────────────────────────────────────────── */
+.lobby-chat {
+  display: flex;
+  flex-direction: column;
+}
+.lobby-chat .chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.lobby-chat .chat-body {
+  flex: 1;
+  max-height: none;
+}
+
+@media (max-width: 1000px) {
+  .lobby-content {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .lobby-content {
+    grid-template-columns: 1fr;
+  }
+  .room-code-text {
+    font-size: var(--fs-xl);
+    letter-spacing: 4px;
+  }
+}
