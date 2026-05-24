@@ -23,6 +23,8 @@
   padding: var(--sp-8);
   max-width: 460px;
   width: 100%;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow-card), var(--shadow-cyan);
   animation: scale-in 0.3s ease-out;
   max-height: 90vh;
@@ -182,13 +184,15 @@
 }
 
 .chat-body {
-  max-height: 250px;
+  max-height: 350px;
   overflow-y: auto;
   padding: var(--sp-3);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
   transition: max-height var(--transition-base);
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .chat-body.collapsed {
@@ -199,7 +203,7 @@
 .chat-message {
   display: flex;
   gap: var(--sp-2);
-  animation: slide-up 0.2s ease-out;
+  align-items: baseline;
 }
 
 .chat-msg-sender {
@@ -295,8 +299,9 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--bg-primary);
+  background: var(--accent-cyan) !important;
   flex-shrink: 0;
 }
 
@@ -358,18 +363,6 @@
   background: var(--text-muted);
 }
 
-.player-status-dot.asking {
-  background: var(--accent-cyan);
-  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
-  animation: glow-pulse 1.5s ease-in-out infinite;
-}
-
-.player-status-dot.answering {
-  background: var(--accent-purple-light);
-  box-shadow: 0 0 8px rgba(179, 136, 255, 0.5);
-  animation: glow-pulse 1.5s ease-in-out infinite;
-}
-
 /* ── Role Reveal Animation ──────────────────────────────────── */
 .reveal-overlay {
   position: fixed;
@@ -429,7 +422,9 @@
 .spy-guess-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 14, 26, 0.95);
+  background: rgba(20, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
@@ -445,6 +440,9 @@
   overflow-y: auto;
   padding: var(--sp-6);
   animation: scale-in 0.4s ease-out;
+  border: 1px solid var(--danger);
+  box-shadow: 0 0 50px rgba(255, 23, 68, 0.3), inset 0 0 20px rgba(255, 23, 68, 0.1);
+  background: rgba(30, 0, 0, 0.8);
 }
 
 .spy-guess-title {

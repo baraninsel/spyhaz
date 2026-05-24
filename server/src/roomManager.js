@@ -3,6 +3,11 @@ import { randomBytes } from 'node:crypto';
 
 const rooms = new Map();
 
+const AVATARS = ['🕶️', '🕵️', '👩‍💻', '🤖', '👽', '👻', '🦊', '🐱', '🎭', '👾', '🚀', '🎯'];
+function getRandomAvatar() {
+  return AVATARS[Math.floor(Math.random() * AVATARS.length)];
+}
+
 // Generate a unique 6-char room code (format: XXX-XXX)
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no confusing chars
@@ -28,7 +33,7 @@ export function createRoom(hostId, hostName, settings = {}) {
       spyGuessCount: settings.spyGuessCount || 2,
     },
     players: [
-      { id: hostId, name: hostName, connected: true }
+      { id: hostId, name: hostName, connected: true, avatar: getRandomAvatar() }
     ],
     game: null, // game state set when game starts
     chat: [],
@@ -53,8 +58,9 @@ export function joinRoom(code, playerId, playerName) {
   if (existing) {
     existing.connected = true;
     existing.name = playerName;
+    // Don't change avatar on reconnect
   } else {
-    room.players.push({ id: playerId, name: playerName, connected: true });
+    room.players.push({ id: playerId, name: playerName, connected: true, avatar: getRandomAvatar() });
   }
   room.lastActivity = Date.now();
   return { room };
@@ -103,6 +109,7 @@ export function getPublicPlayers(room) {
   return room.players.map(p => ({
     id: p.id,
     name: p.name,
+    avatar: p.avatar || '👤',
     connected: p.connected,
     isHost: p.id === room.hostId,
   }));

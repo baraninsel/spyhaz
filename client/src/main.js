@@ -24,12 +24,24 @@ import { showVoteRequest, handleVoteRequestResult, updateVotedPlayer, showVoteRe
 import { showSpyGuessResult } from './screens/spyGuess.js';
 import { renderResult } from './screens/result.js';
 
+// Utils
+import { playSFX, toggleMute, getMuteState } from './utils/audio.js';
+
 // Components
 import { showToast } from './components/toast.js';
 import { handleNewChatMessage } from './components/chat.js';
 
 // ── Initialize ─────────────────────────────────────────────────
 const socket = initSocket();
+
+// Mute toggle listener
+const muteBtn = document.getElementById('mute-toggle');
+if (muteBtn) {
+  muteBtn.addEventListener('click', () => {
+    const isMuted = toggleMute();
+    muteBtn.textContent = isMuted ? '🔇' : '🔊';
+  });
+}
 
 // ── Register Routes ────────────────────────────────────────────
 registerRoute('home', renderHome);
@@ -45,6 +57,7 @@ socket.on('room:playerJoined', ({ player }) => {
   setState({ players });
   if (getCurrentScreen() === 'lobby') updatePlayerList();
   showToast(`${player.name} odaya katıldı!`, 'info');
+  playSFX.join();
 });
 
 socket.on('room:playerLeft', ({ playerId, newHostId, players }) => {
@@ -95,6 +108,7 @@ socket.on('game:started', (data) => {
 
   // Show role reveal overlay
   showRoleReveal();
+  playSFX.start();
 });
 
 socket.on('game:allReady', () => {
@@ -119,6 +133,7 @@ socket.on('question:turn', ({ askerId, askerName, availableTargets, round }) => 
   // Notify if it's your turn
   if (askerId === getState().playerId) {
     showToast('Sıra sende! Kime soru sormak istiyorsun?', 'info');
+    playSFX.turn();
   }
 });
 
@@ -139,16 +154,21 @@ socket.on('question:newRound', ({ round }) => {
 socket.on('timer:update', ({ remaining, isPaused }) => {
   setState({ timerRemaining: remaining, timerPaused: isPaused });
   if (getCurrentScreen() === 'game') updateTimer();
+  if (!isPaused && remaining <= 10 && remaining > 0) {
+    playSFX.tick();
+  }
 });
 
 socket.on('timer:expired', () => {
   showToast('⏱️ Süre doldu!', 'error');
+  playSFX.alert();
 });
 
 // Vote events
 socket.on('vote:requested', ({ requesterId, requesterName }) => {
   setState({ votePhase: 'REQUEST', voteRequesterId: requesterId, voteRequesterName: requesterName });
   showVoteRequest(requesterId, requesterName);
+  playSFX.alert();
 });
 
 socket.on('vote:requestResult', ({ accepted, yes, no }) => {
@@ -182,6 +202,10 @@ socket.on('spy:guessResult', (data) => {
 // Game over
 socket.on('game:over', (data) => {
   const app = document.getElementById('app');
+  const state = getState();
+  const won = (state.isSpy && data.winner === 'SPY') || (!state.isSpy && data.winner === 'PLAYERS');
+  if (won) playSFX.win();
+  else playSFX.lose();
   renderResult(app, data);
 });
 

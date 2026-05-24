@@ -37,6 +37,14 @@ const state = {
   chatMessages: [],
   chatCollapsed: false,
   unreadCount: 0,
+
+  // Role visibility
+  roleHidden: false,
+
+  // Kick Chat Integration
+  kickUsername: '',
+  kickChatVisible: true,
+  kickChatViewerId: null, // Only this player sees the Kick chat (usually the host/streamer)
 };
 
 const listeners = new Set();
@@ -83,5 +91,9 @@ export function resetGameState() {
     selectedSuspect: null,
     chatMessages: [],
     unreadCount: 0,
+    roleHidden: false,
+    // Keep kickUsername so it persists between games
+    kickChatVisible: true,
+    kickChatViewerId: null,
   });
 }

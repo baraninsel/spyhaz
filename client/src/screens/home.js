@@ -47,13 +47,23 @@ export function renderHome(container) {
   container.querySelector('#btn-create').addEventListener('click', showCreateModal);
 
   // Join Room
-  container.querySelector('#btn-join').addEventListener('click', showJoinModal);
+  container.querySelector('#btn-join').addEventListener('click', () => showJoinModal());
 
   // Rules
   container.querySelector('#btn-rules').addEventListener('click', showRulesModal);
 
   // History
   container.querySelector('#btn-history').addEventListener('click', showHistoryModal);
+
+  // Auto-open join if code is in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const codeParam = urlParams.get('code');
+  if (codeParam) {
+    // Small delay to let the screen render properly
+    setTimeout(() => showJoinModal(codeParam), 100);
+    // Remove code from URL without reloading
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 }
 
 function showCreateModal() {
@@ -97,7 +107,7 @@ function showCreateModal() {
   });
 }
 
-function showJoinModal() {
+function showJoinModal(initialCode = '') {
   showModal('ODAYA KATIL', `
     <div class="join-form">
       <div class="input-group">
@@ -106,7 +116,7 @@ function showJoinModal() {
       </div>
       <div class="input-group">
         <label class="input-label">Oda Kodu</label>
-        <input type="text" class="input code-input" id="join-code" placeholder="XXX-XXX" maxlength="7" autocomplete="off" />
+        <input type="text" class="input code-input" id="join-code" value="${initialCode}" placeholder="XXX-XXX" maxlength="7" autocomplete="off" />
       </div>
     </div>
   `, {
@@ -116,6 +126,13 @@ function showJoinModal() {
     `,
     onMount: (modal) => {
       const codeInput = modal.querySelector('#join-code');
+      // Format initial code if any
+      if (codeInput.value) {
+        let val = codeInput.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        if (val.length > 3) val = val.slice(0, 3) + '-' + val.slice(3, 6);
+        codeInput.value = val;
+      }
+
       // Auto-format code with dash
       codeInput.addEventListener('input', (e) => {
         let val = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();

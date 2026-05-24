@@ -8,6 +8,8 @@
   max-width: 1800px;
   width: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Top Bar ────────────────────────────────────────────────── */
@@ -27,6 +29,14 @@
   display: flex;
   align-items: center;
   gap: var(--sp-4);
+}
+
+.game-topbar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  flex: 1;
 }
 
 .game-topbar-right {
@@ -63,10 +73,15 @@
 /* ── Main Content Grid ──────────────────────────────────────── */
 .game-content {
   display: grid;
-  grid-template-columns: 300px 1fr 320px;
+  grid-template-columns: 300px 1fr;
   gap: var(--sp-4);
   animation: fade-in 0.4s ease-out;
-  min-height: calc(100vh - 32px);
+  flex: 1;
+}
+
+/* Streamer mode: 3 columns with Kick chat on right */
+.game-content.game-content-streamer {
+  grid-template-columns: 300px 1fr 340px;
 }
 
 /* ── Sidebars ─────────────────────────────────────────────────── */
@@ -77,12 +92,38 @@
 }
 
 .game-sidebar-left {
-  /* Specific left sidebar styles if any */
+  /* Left sidebar: Role card + Players + Chat */
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .game-sidebar-right {
   display: flex;
   flex-direction: column;
+  max-height: calc(100vh - 100px);
+}
+
+/* ── Players Card (Left Sidebar) ───────────────────────────── */
+.game-players-card {
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+}
+
+.game-players-list {
+  overflow-y: auto;
+  max-height: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  scrollbar-width: thin;
+}
+
+/* ── Game Chat (Left Sidebar) ──────────────────────────────── */
+.game-chat {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Role Card ──────────────────────────────────────────────── */
@@ -137,9 +178,75 @@
   animation: glow-pulse 2s ease-in-out infinite;
 }
 
+/* ── Role Card Header Row (hide/show toggle) ───────────────── */
+.role-card-header-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--sp-2);
+}
+
+.role-hide-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all var(--transition-fast);
+  color: var(--text-secondary);
+}
+
+.role-hide-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-cyan);
+  transform: scale(1.1);
+}
+
+.role-card-hidden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
+}
+
+.role-card-hidden-icon {
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.role-card-hidden-text {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+/* ── Kick Chat Topbar Toggle ───────────────────────────────── */
+.btn-kick-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--sp-2) var(--sp-3) !important;
+  border: 1px solid var(--kick-green-border) !important;
+  border-radius: var(--radius-md) !important;
+  background: rgba(83, 252, 24, 0.06) !important;
+  transition: all var(--transition-fast);
+}
+
+.btn-kick-toggle:hover {
+  background: rgba(83, 252, 24, 0.15) !important;
+  box-shadow: 0 0 12px rgba(83, 252, 24, 0.2);
+}
+
 /* ── Question Turn Section ──────────────────────────────────── */
 .question-section {
   padding: var(--sp-4);
+  margin-bottom: var(--sp-3);
 }
 
 .question-status {
@@ -215,9 +322,10 @@
 /* ── Location Grid ──────────────────────────────────────────── */
 .location-grid-container {
   padding: var(--sp-4);
-  flex: 1;
   display: flex;
   flex-direction: column;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-lg);
 }
 
 .location-grid-title {
@@ -241,8 +349,7 @@
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 16px;
-  flex: 1;
-  align-content: center;
+  align-content: start;
 }
 
 .location-card {
@@ -322,14 +429,285 @@
   color: var(--danger);
 }
 
-/* ── Chat Panel (Game) ──────────────────────────────────────── */
-.game-chat {
-  margin-top: auto;
+/* ══════════════════════════════════════════════════════════════
+   KICK CHAT PANEL STYLES
+   ══════════════════════════════════════════════════════════════ */
+
+/* Kick brand green */
+:root {
+  --kick-green: #53fc18;
+  --kick-green-dim: #2d8a0d;
+  --kick-green-glow: rgba(83, 252, 24, 0.15);
+  --kick-green-border: rgba(83, 252, 24, 0.25);
+  --kick-bg: rgba(10, 18, 10, 0.85);
 }
+
+.kick-chat-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--kick-green-border);
+  border-radius: var(--radius-lg);
+  background: var(--kick-bg);
+  overflow: hidden;
+  flex: 1;
+  box-shadow: 0 0 25px rgba(83, 252, 24, 0.08), var(--shadow-card);
+  animation: kick-slide-in 0.5s ease-out;
+}
+
+@keyframes kick-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.kick-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  background: rgba(83, 252, 24, 0.06);
+  border-bottom: 1px solid var(--kick-green-border);
+  min-height: 44px;
+}
+
+.kick-chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.kick-chat-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.kick-chat-logo {
+  display: flex;
+  align-items: center;
+  filter: drop-shadow(0 0 6px rgba(83, 252, 24, 0.5));
+}
+
+.kick-chat-title {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--kick-green);
+  text-shadow: 0 0 10px rgba(83, 252, 24, 0.5);
+  letter-spacing: 1px;
+}
+
+.kick-chat-channel {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  background: rgba(83, 252, 24, 0.08);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(83, 252, 24, 0.12);
+}
+
+.kick-chat-toggle-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--kick-green);
+  font-size: 10px;
+  transition: all var(--transition-fast);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.kick-chat-toggle-btn:hover {
+  background: rgba(83, 252, 24, 0.1);
+  border-color: var(--kick-green-border);
+}
+
+.kick-chat-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: all var(--transition-fast);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.kick-chat-close-btn:hover {
+  color: var(--danger);
+  background: rgba(255, 23, 68, 0.1);
+  border-color: rgba(255, 23, 68, 0.3);
+}
+
+/* Chat Body - iframe container */
+.kick-chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 800px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.kick-chat-body.collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kick-chat-iframe {
+  width: 100%;
+  flex: 1;
+  border: none;
+  background: #0a0a0a;
+  min-height: 400px;
+}
+
+.kick-chat-iframe.hidden {
+  display: none;
+}
+
+/* Iframe fallback */
+.kick-chat-iframe-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-8);
+  text-align: center;
+  flex: 1;
+}
+
+.kick-chat-iframe-fallback.hidden {
+  display: none;
+}
+
+.kick-chat-fallback-icon {
+  font-size: 2.5rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+.kick-chat-fallback-text {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+/* Setup screen (no username yet) */
+.kick-chat-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+  flex: 1;
+  min-height: 300px;
+}
+
+.kick-chat-setup-icon {
+  font-size: 3rem;
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(83, 252, 24, 0.3));
+}
+
+.kick-chat-setup-text {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  max-width: 250px;
+  line-height: 1.6;
+}
+
+.kick-chat-setup-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--kick-green-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  width: 100%;
+  max-width: 260px;
+  transition: all var(--transition-fast);
+}
+
+.kick-chat-setup-input-wrap:focus-within {
+  border-color: var(--kick-green);
+  box-shadow: 0 0 0 3px rgba(83, 252, 24, 0.1);
+}
+
+.kick-chat-setup-prefix {
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(83, 252, 24, 0.08);
+  color: var(--kick-green);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  border-right: 1px solid var(--kick-green-border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.kick-chat-setup-input {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  outline: none;
+  min-width: 0;
+}
+
+.kick-chat-setup-input::placeholder {
+  color: var(--text-muted);
+}
+
+.kick-chat-connect-btn {
+  background: linear-gradient(135deg, var(--kick-green-dim), var(--kick-green));
+  color: #000;
+  border: 1px solid var(--kick-green);
+  font-weight: 700;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  padding: var(--sp-3) var(--sp-6);
+  letter-spacing: 1px;
+  box-shadow: 0 0 15px rgba(83, 252, 24, 0.2);
+  transition: all var(--transition-base);
+}
+
+.kick-chat-connect-btn:hover {
+  box-shadow: 0 0 25px rgba(83, 252, 24, 0.35);
+  transform: translateY(-2px);
+}
+
+.kick-chat-connect-btn:active {
+  transform: translateY(0);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE STYLES
+   ══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1200px) {
   .game-content {
-    grid-template-columns: 260px 1fr 260px;
+    grid-template-columns: 260px 1fr;
+  }
+  .game-content.game-content-streamer {
+    grid-template-columns: 260px 1fr 300px;
   }
   .location-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -340,14 +718,12 @@
   .game-content {
     grid-template-columns: 260px 1fr;
   }
+  .game-content.game-content-streamer {
+    grid-template-columns: 260px 1fr;
+  }
   .game-sidebar-right {
     grid-column: 1 / -1;
-    flex-direction: row;
-    height: 300px; /* fixed height for chat and players at bottom */
-  }
-  .game-sidebar-right > * {
-    flex: 1;
-    min-width: 250px;
+    max-height: 350px;
   }
   .location-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -358,18 +734,21 @@
   .game-content {
     grid-template-columns: 1fr;
   }
+  .game-content.game-content-streamer {
+    grid-template-columns: 1fr;
+  }
   .game-sidebar-left {
     order: -1;
     flex-direction: row;
     flex-wrap: wrap;
+    max-height: none;
   }
   .game-sidebar-left > * {
     flex: 1;
     min-width: 200px;
   }
   .game-sidebar-right {
-    flex-direction: column;
-    height: auto;
+    max-height: 350px;
   }
   .game-topbar {
     flex-wrap: wrap;

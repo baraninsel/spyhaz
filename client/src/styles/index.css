@@ -8,9 +8,9 @@
   /* Colors */
   --bg-primary: #0a0e1a;
   --bg-secondary: #0f1528;
-  --bg-surface: #141a2e;
-  --bg-surface-hover: #1a2240;
-  --bg-surface-active: #1e2848;
+  --bg-surface: rgba(20, 26, 46, 0.75);
+  --bg-surface-hover: rgba(26, 34, 64, 0.85);
+  --bg-surface-active: rgba(30, 40, 72, 0.9);
 
   --accent-cyan: #00e5ff;
   --accent-cyan-dim: #007a8a;
@@ -299,6 +299,8 @@ body::before {
   border-radius: var(--radius-lg);
   padding: var(--sp-5);
   box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transition: all var(--transition-base);
 }
 

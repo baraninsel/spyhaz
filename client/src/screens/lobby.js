@@ -117,12 +117,30 @@ export function renderLobby(container) {
   });
 
   // Copy room code
-  container.querySelector('#copy-code').addEventListener('click', () => {
-    navigator.clipboard.writeText(state.roomCode).then(() => {
+  container.querySelector('#copy-code').addEventListener('click', async () => {
+    const textToCopy = state.roomCode;
+    
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for non-secure contexts (HTTP)
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
       showToast('Oda kodu kopyalandı!', 'success');
-    }).catch(() => {
-      showToast(state.roomCode, 'info');
-    });
+    } catch (err) {
+      console.error('Copy failed', err);
+      showToast(textToCopy, 'info');
+    }
   });
 
   // Settings sliders (host only)
