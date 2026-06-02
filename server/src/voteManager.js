@@ -44,6 +44,7 @@ export function startVoting() {
 
 export function castVote(voteState, playerId, suspectId) {
   if (voteState.phase !== 'VOTING') return { error: 'Oylama aktif değil.' };
+  if (playerId === suspectId) return { error: 'Kendinize oy veremezsiniz.' };
   voteState.votes.set(playerId, suspectId);
   return { success: true };
 }
@@ -57,15 +58,22 @@ export function checkVoteResult(voteState, totalPlayers) {
     counts[suspectId] = (counts[suspectId] || 0) + 1;
   }
 
-  // Find player with most votes
+  // Find player with most votes — detect ties
   let maxVotes = 0;
   let accusedId = null;
+  let tieCount = 0;
   for (const [id, count] of Object.entries(counts)) {
     if (count > maxVotes) {
       maxVotes = count;
       accusedId = id;
+      tieCount = 1;
+    } else if (count === maxVotes) {
+      tieCount++;
     }
   }
+
+  // Tie → no accusation
+  const isTie = tieCount > 1;
 
   // Build votes detail for results display
   const votesDetail = {};
@@ -73,5 +81,5 @@ export function checkVoteResult(voteState, totalPlayers) {
     votesDetail[voterId] = suspectId;
   }
 
-  return { complete: true, accusedId, maxVotes, votesDetail, counts };
+  return { complete: true, accusedId, isTie, maxVotes, votesDetail, counts };
 }

@@ -1,6 +1,6 @@
 // Home Screen
 import { getSocket, emitWithCallback } from '../socket.js';
-import { getState, setState } from '../state.js';
+import { getState, setState, saveSession } from '../state.js';
 import { navigateTo } from '../router.js';
 import { showModal, closeModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
@@ -88,12 +88,15 @@ function showCreateModal() {
         const res = await emitWithCallback('room:create', { settings: {}, playerName: name });
         if (res.success) {
           setState({
+            playerId: res.playerId,
             playerName: name,
             roomCode: res.code,
             isHost: true,
             settings: res.settings,
             players: res.players,
+            reconnectToken: res.reconnectToken || null,
           });
+          saveSession();
           closeModal();
           navigateTo('lobby');
         } else {
@@ -150,12 +153,15 @@ function showJoinModal(initialCode = '') {
         const res = await emitWithCallback('room:join', { code, playerName: name });
         if (res.success) {
           setState({
+            playerId: res.playerId,
             playerName: name,
             roomCode: res.code,
             isHost: res.hostId === res.playerId,
             settings: res.settings,
             players: res.players,
+            reconnectToken: res.reconnectToken || null,
           });
+          saveSession();
           closeModal();
           navigateTo('lobby');
         } else {
@@ -169,42 +175,224 @@ function showJoinModal(initialCode = '') {
 }
 
 function showRulesModal() {
-  showModal('NASIL OYNANIR?', `
-    <div class="rules-content">
-      <p>Spyhaz, 3-8 kişiyle oynanan bir sosyal dedüksiyon oyunudur.</p>
+  const steps = [
+    {
+      emoji: '🎯',
+      title: 'Amaç',
+      desc: 'Oyuncular aralarındaki casusu bulmaya çalışır. Casus ise gizlice konumun neresi olduğunu tahmin etmeye çalışır.',
+      visual: `
+        <div class="tut-visual tut-vs-aim">
+          <div class="tut-vs-group">
+            <span class="tut-vs-icon tut-bounce" style="animation-delay:0s">👤</span>
+            <span class="tut-vs-icon tut-bounce" style="animation-delay:.15s">👤</span>
+            <span class="tut-vs-icon tut-bounce" style="animation-delay:.3s">👤</span>
+          </div>
+          <span class="tut-vs-versus">VS</span>
+          <div class="tut-vs-group">
+            <span class="tut-vs-icon tut-bounce tut-spy-glow" style="animation-delay:.45s">🕵️</span>
+          </div>
+        </div>`
+    },
+    {
+      emoji: '🃏',
+      title: 'Roller',
+      desc: 'Herkese aynı konum ve o konuma özel bir rol atanır. Ancak bir kişi gizlice casus seçilir — casus konumu göremez!',
+      visual: `
+        <div class="tut-visual tut-vs-roles">
+          <div class="tut-card tut-card-flip" style="animation-delay:0s">
+            <div class="tut-card-inner">
+              <div class="tut-card-front">❓</div>
+              <div class="tut-card-back">🏥<span>Doktor</span></div>
+            </div>
+          </div>
+          <div class="tut-card tut-card-flip" style="animation-delay:.3s">
+            <div class="tut-card-inner">
+              <div class="tut-card-front">❓</div>
+              <div class="tut-card-back">🏥<span>Hemşire</span></div>
+            </div>
+          </div>
+          <div class="tut-card tut-card-flip" style="animation-delay:.6s">
+            <div class="tut-card-inner">
+              <div class="tut-card-front">❓</div>
+              <div class="tut-card-back tut-card-spy">🕵️<span>Casus</span></div>
+            </div>
+          </div>
+        </div>`
+    },
+    {
+      emoji: '❓',
+      title: 'Sorular',
+      desc: 'Sırayla birbirinize sorular sorun ve cevaplara dikkat edin. Cevaplardan casusu veya konumu çıkarmaya çalışın!',
+      visual: `
+        <div class="tut-visual tut-vs-chat">
+          <div class="tut-bubble tut-bubble-left tut-fade-in" style="animation-delay:.2s">
+            <strong>Ali:</strong> Burada ne giyersin?
+          </div>
+          <div class="tut-bubble tut-bubble-right tut-fade-in" style="animation-delay:.8s">
+            <strong>Ayşe:</strong> Rahat bir şey 😊
+          </div>
+          <div class="tut-bubble tut-bubble-left tut-fade-in" style="animation-delay:1.4s">
+            <strong>Mehmet:</strong> Hmm... ilginç 🤔
+          </div>
+        </div>`
+    },
+    {
+      emoji: '🗳️',
+      title: 'Oylama',
+      desc: 'Şüphelendiğin kişi için oylama başlat! Çoğunluk kabul ederse herkes oy verir. En çok oyu alan suçlanır.',
+      visual: `
+        <div class="tut-visual tut-vs-vote">
+          <div class="tut-vote-bar tut-bar-fill" style="--bar-w:80%;animation-delay:.3s">
+            <span>Mehmet</span><span>4 oy</span>
+          </div>
+          <div class="tut-vote-bar tut-bar-fill" style="--bar-w:40%;animation-delay:.6s">
+            <span>Ali</span><span>2 oy</span>
+          </div>
+          <div class="tut-vote-bar tut-bar-fill" style="--bar-w:20%;animation-delay:.9s">
+            <span>Ayşe</span><span>1 oy</span>
+          </div>
+        </div>`
+    },
+    {
+      emoji: '🕵️',
+      title: 'Casus Tahmini',
+      desc: 'Casus istediği an konumu tahmin edebilir. Doğru tahmin = Casus kazanır! Tahmin hakkı sınırlıdır (varsayılan: 2).',
+      visual: `
+        <div class="tut-visual tut-vs-guess">
+          <div class="tut-guess-grid">
+            <span class="tut-guess-loc tut-fade-in" style="animation-delay:.1s">🏫 Okul</span>
+            <span class="tut-guess-loc tut-fade-in" style="animation-delay:.2s">🏥 Hastane</span>
+            <span class="tut-guess-loc tut-guess-pick tut-fade-in" style="animation-delay:.3s">✈️ Havalimanı</span>
+            <span class="tut-guess-loc tut-fade-in" style="animation-delay:.4s">🏦 Banka</span>
+            <span class="tut-guess-loc tut-fade-in" style="animation-delay:.5s">🚢 Gemi</span>
+            <span class="tut-guess-loc tut-fade-in" style="animation-delay:.6s">🎪 Sirk</span>
+          </div>
+        </div>`
+    },
+    {
+      emoji: '🏆',
+      title: 'Puanlama',
+      desc: 'Her tur sonunda kazananlara puan verilir. İstediğiniz kadar tur oynayın — en yüksek puanlı oyuncu genel kazanan!',
+      visual: `
+        <div class="tut-visual tut-vs-score">
+          <div class="tut-score-section tut-fade-in" style="animation-delay:.1s">
+            <div class="tut-score-header">🕵️ Casus Kazanırsa</div>
+            <div class="tut-score-row">
+              <span class="tut-score-label">Süre doldu (kimse suçlanmadı)</span>
+              <span class="tut-score-pts tut-pts-cyan">+2 puan</span>
+            </div>
+            <div class="tut-score-row">
+              <span class="tut-score-label">Yanlış kişi suçlandı</span>
+              <span class="tut-score-pts tut-pts-cyan">+4 puan</span>
+            </div>
+            <div class="tut-score-row">
+              <span class="tut-score-label">Konumu doğru tahmin etti</span>
+              <span class="tut-score-pts tut-pts-cyan">+4 puan</span>
+            </div>
+          </div>
+          <div class="tut-score-section tut-fade-in" style="animation-delay:.5s">
+            <div class="tut-score-header">👥 Oyuncular Kazanırsa</div>
+            <div class="tut-score-row">
+              <span class="tut-score-label">Her oyuncu</span>
+              <span class="tut-score-pts tut-pts-purple">+1 puan</span>
+            </div>
+            <div class="tut-score-row">
+              <span class="tut-score-label">Oylamayı başlatan oyuncu</span>
+              <span class="tut-score-pts tut-pts-purple">+2 puan</span>
+            </div>
+          </div>
+        </div>`
+    },
+    {
+      emoji: '⏱️',
+      title: 'Süre',
+      desc: 'Her tur için süre belirlenir. Süre dolduğunda kimse casusu bulamadıysa, casus otomatik olarak kazanır!',
+      visual: `
+        <div class="tut-visual tut-vs-timer">
+          <div class="tut-timer-circle">
+            <svg viewBox="0 0 100 100" class="tut-timer-svg">
+              <circle cx="50" cy="50" r="42" class="tut-timer-track"/>
+              <circle cx="50" cy="50" r="42" class="tut-timer-fill tut-timer-animate"/>
+            </svg>
+            <span class="tut-timer-text">0:00</span>
+          </div>
+          <div class="tut-timer-label tut-fade-in" style="animation-delay:1s">⚠️ Süre doldu — Casus kazanır!</div>
+        </div>`
+    }
+  ];
 
-      <h3>🎯 Amaç</h3>
-      <p><strong>Oyuncular:</strong> Aralarındaki casusu bulmaya çalışır.</p>
-      <p><strong>Casus:</strong> Konumun neresi olduğunu bulmaya çalışır.</p>
+  const totalSteps = steps.length;
 
-      <h3>🎮 Oyun Akışı</h3>
-      <ul>
-        <li>Herkese aynı konum ve o konuma özel bir rol atanır</li>
-        <li>Bir kişi gizlice <strong>casus</strong> seçilir — casus konumu göremez</li>
-        <li>Sırayla birbirinize sorular sorarsınız</li>
-        <li>Cevaplardan casusu veya konumu çıkarmaya çalışın</li>
-      </ul>
-
-      <h3>🗳️ Oylama</h3>
-      <ul>
-        <li>Herhangi biri oylama başlatabilir</li>
-        <li>Çoğunluk kabul ederse herkes oy verir</li>
-        <li>En çok oy alan suçlanır</li>
-        <li><strong>Doğru suçlama:</strong> Oyuncular kazanır!</li>
-        <li><strong>Yanlış suçlama:</strong> Casus kazanır!</li>
-      </ul>
-
-      <h3>🕵️ Casus Tahmini</h3>
-      <ul>
-        <li>Casus istediği zaman konumu tahmin edebilir</li>
-        <li>Doğru tahmin = Casus kazanır</li>
-        <li>Tahmin hakkı ayarlanabilir (varsayılan: 2)</li>
-      </ul>
-
-      <h3>⏱️ Süre</h3>
-      <p>Süre dolduğunda casus kazanır!</p>
+  const slidesHTML = steps.map((s, i) => `
+    <div class="tut-slide" data-step="${i}">
+      <div class="tut-step-emoji">${s.emoji}</div>
+      <h3 class="tut-step-title">${s.title}</h3>
+      <p class="tut-step-desc">${s.desc}</p>
+      ${s.visual}
     </div>
-  `);
+  `).join('');
+
+  const dotsHTML = steps.map((_, i) => `<span class="tut-dot${i === 0 ? ' active' : ''}" data-dot="${i}"></span>`).join('');
+
+  showModal('NASIL OYNANIR?', `
+    <div class="tut-container">
+      <div class="tut-track">${slidesHTML}</div>
+      <div class="tut-dots">${dotsHTML}</div>
+      <div class="tut-nav">
+        <button class="btn btn-ghost tut-btn-prev" disabled>← Geri</button>
+        <span class="tut-counter">1 / ${totalSteps}</span>
+        <button class="btn btn-primary tut-btn-next">İleri →</button>
+      </div>
+    </div>
+  `, {
+    onMount: (modal) => {
+      let current = 0;
+      const track = modal.querySelector('.tut-track');
+      const dots = modal.querySelectorAll('.tut-dot');
+      const prevBtn = modal.querySelector('.tut-btn-prev');
+      const nextBtn = modal.querySelector('.tut-btn-next');
+      const counter = modal.querySelector('.tut-counter');
+
+      function goTo(idx) {
+        if (idx < 0 || idx >= totalSteps) return;
+        current = idx;
+        track.style.transform = `translateX(-${current * 100}%)`;
+        dots.forEach((d, i) => d.classList.toggle('active', i === current));
+        prevBtn.disabled = current === 0;
+        nextBtn.textContent = current === totalSteps - 1 ? 'Kapat ✕' : 'İleri →';
+        counter.textContent = `${current + 1} / ${totalSteps}`;
+        // Restart animations for current slide
+        const slide = track.children[current];
+        slide.querySelectorAll('[class*="tut-"]').forEach(el => {
+          el.style.animation = 'none';
+          el.offsetHeight; // reflow
+          el.style.animation = '';
+        });
+      }
+
+      prevBtn.addEventListener('click', () => goTo(current - 1));
+      nextBtn.addEventListener('click', () => {
+        if (current === totalSteps - 1) { closeModal(); return; }
+        goTo(current + 1);
+      });
+      dots.forEach(d => d.addEventListener('click', () => goTo(Number(d.dataset.dot))));
+
+      // Keyboard nav
+      const keyHandler = (e) => {
+        if (e.key === 'ArrowRight') goTo(current + 1);
+        else if (e.key === 'ArrowLeft') goTo(current - 1);
+      };
+      document.addEventListener('keydown', keyHandler);
+      // Cleanup on modal close
+      const observer = new MutationObserver(() => {
+        if (!document.getElementById('active-modal')) {
+          document.removeEventListener('keydown', keyHandler);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  });
 }
 
 function showHistoryModal() {

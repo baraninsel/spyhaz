@@ -175,6 +175,26 @@ export function showVoteResults(data) {
       `;
     }).join('');
 
+  // Tie — no accusation, game continues
+  if (data.isTie) {
+    overlay.innerHTML = `
+      <div class="card vote-container vote-results">
+        <div class="vote-result-title">
+          <span style="color: var(--warning);">⚖️ BERABERE!</span><br>Oylar eşit — kimse suçlanmadı.
+        </div>
+        <div class="vote-result-bars">${bars}</div>
+        <div style="color: var(--text-secondary); text-align: center; margin-top: var(--sp-4); font-size: var(--fs-sm);">
+          Oyun devam ediyor...
+        </div>
+      </div>
+    `;
+    setState({ votePhase: null });
+    setTimeout(() => {
+      if (overlay.parentNode) overlay.remove();
+    }, 3000);
+    return;
+  }
+
   overlay.innerHTML = `
     <div class="card vote-container vote-results">
       <div class="vote-result-title">

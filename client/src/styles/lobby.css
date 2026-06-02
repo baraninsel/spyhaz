@@ -228,3 +228,254 @@
     letter-spacing: 4px;
   }
 }
+
+/* ── Clickable Setting Item ────────────────────────────────── */
+.setting-item-clickable {
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.setting-item-clickable:hover {
+  border-color: var(--accent-purple);
+  background: var(--bg-surface-hover);
+}
+
+.setting-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+
+/* ── Location Count Badge ──────────────────────────────────── */
+.loc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+}
+
+/* ── Preset Section ────────────────────────────────────────── */
+.preset-section {
+  border-color: var(--border-purple) !important;
+}
+
+.preset-section:hover {
+  border-color: var(--accent-purple) !important;
+}
+
+.preset-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.preset-btn {
+  flex: 1;
+  font-size: var(--fs-xs) !important;
+  padding: var(--sp-2) var(--sp-3) !important;
+}
+
+/* ── Preset List (in modal) ────────────────────────────────── */
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.preset-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.preset-item:hover {
+  border-color: var(--accent-cyan);
+  background: var(--bg-surface-hover);
+}
+
+.preset-item-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.preset-item-icon {
+  font-size: var(--fs-lg);
+  flex-shrink: 0;
+}
+
+.preset-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.preset-item-name {
+  font-weight: 600;
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preset-item-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.preset-item-actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  margin-left: var(--sp-3);
+}
+
+.preset-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: var(--sp-8);
+}
+
+/* ── Preset Save Form ──────────────────────────────────────── */
+.preset-save-desc {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-4);
+}
+
+.preset-save-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.preset-preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+/* ── Preset Tabs ───────────────────────────────────────────── */
+.preset-tabs {
+  display: flex;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--sp-2);
+}
+
+.preset-tab {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.preset-tab:hover {
+  color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.preset-tab.active {
+  color: var(--accent-cyan);
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.preset-tab-content.hidden {
+  display: none !important;
+}
+
+/* ── Recommended Badge ─────────────────────────────────────── */
+.preset-recommended {
+  border-color: rgba(255, 214, 0, 0.3) !important;
+  background: rgba(255, 214, 0, 0.04) !important;
+}
+
+.preset-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.preset-rec-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--warning);
+  background: rgba(255, 214, 0, 0.12);
+  border: 1px solid rgba(255, 214, 0, 0.3);
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.preset-item-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Player Hint ───────────────────────────────────────────── */
+.preset-player-hint {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  padding: var(--sp-2) var(--sp-3);
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid rgba(0, 229, 255, 0.1);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--sp-3);
+}
+
+/* ── Import/Export Textareas ───────────────────────────────── */
+.preset-import-textarea,
+.preset-export-textarea {
+  width: 100%;
+  padding: var(--sp-3);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.preset-import-textarea:focus,
+.preset-export-textarea:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
+  outline: none;
+}
+
+.preset-export-section {
+  margin-top: var(--sp-2);
+}

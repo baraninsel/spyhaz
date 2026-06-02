@@ -1,0 +1,482 @@
+/* ══════════════════════════════════════════════════════════════
+   DETECTIVE NOTEBOOK (DEDEKTİF NOT DEFTERİ) STYLES
+   Bottom drawer panel for player suspicion tracking & notes
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Notebook Drawer Container ──────────────────────────────── */
+.notebook-drawer {
+  margin-top: var(--sp-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  animation: slide-up 0.4s ease-out;
+  transition: border-color var(--transition-base);
+}
+
+.notebook-drawer:hover {
+  border-color: var(--border-glow);
+}
+
+/* ── Tab Bar (Always Visible) ───────────────────────────────── */
+.notebook-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.08) 0%, rgba(0, 229, 255, 0.05) 100%);
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  min-height: 44px;
+  transition: all var(--transition-fast);
+}
+
+.notebook-tab:hover {
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.12) 0%, rgba(0, 229, 255, 0.08) 100%);
+}
+
+.notebook-drawer.notebook-open .notebook-tab {
+  border-bottom-color: var(--border-color);
+}
+
+.notebook-tab-icon {
+  font-size: 1.1rem;
+  filter: drop-shadow(0 0 6px rgba(124, 77, 255, 0.4));
+}
+
+.notebook-tab-title {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--accent-purple-light);
+  text-shadow: 0 0 10px rgba(179, 136, 255, 0.4);
+  letter-spacing: 1.5px;
+  flex: 1;
+}
+
+.notebook-tab-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.notebook-toggle-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--accent-purple-light);
+  font-size: 10px;
+  transition: all var(--transition-fast);
+  background: rgba(124, 77, 255, 0.1);
+  border: 1px solid rgba(124, 77, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.notebook-toggle-btn:hover {
+  background: rgba(124, 77, 255, 0.2);
+  border-color: var(--accent-purple);
+  transform: scale(1.1);
+}
+
+.notebook-drawer.notebook-open .notebook-toggle-btn {
+  transform: rotate(180deg);
+}
+
+.notebook-drawer.notebook-open .notebook-toggle-btn:hover {
+  transform: rotate(180deg) scale(1.1);
+}
+
+/* ── Collapsible Body ───────────────────────────────────────── */
+.notebook-body {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease;
+}
+
+.notebook-drawer.notebook-open .notebook-body {
+  max-height: 420px;
+  opacity: 1;
+}
+
+/* ── Content Grid (Two Columns) ─────────────────────────────── */
+.notebook-content {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 0;
+  min-height: 300px;
+}
+
+/* ── Left Panel: Player List ────────────────────────────────── */
+.notebook-players {
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.notebook-players-title {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  padding: var(--sp-1) var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.notebook-players-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-color), transparent);
+}
+
+/* ── Player Item ────────────────────────────────────────────── */
+.notebook-player-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 44px;
+}
+
+.notebook-player-item:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-color);
+}
+
+.notebook-player-item.notebook-player-active {
+  background: rgba(124, 77, 255, 0.1);
+  border-color: rgba(124, 77, 255, 0.3);
+  box-shadow: 0 0 8px rgba(124, 77, 255, 0.1);
+}
+
+.notebook-player-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-surface));
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+  transition: border-color var(--transition-fast);
+}
+
+.notebook-player-active .notebook-player-avatar {
+  border-color: var(--accent-purple);
+}
+
+.notebook-player-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notebook-player-name {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Rating Bar (5 Levels) ──────────────────────────────────── */
+.notebook-rating {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.notebook-rating-btn {
+  width: 26px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  position: relative;
+}
+
+.notebook-rating-btn:hover {
+  transform: scale(1.15);
+  z-index: 2;
+}
+
+/* Level 1: Çok Şüpheli */
+.notebook-rating-btn[data-level="1"]:hover,
+.notebook-rating-btn[data-level="1"].rating-active {
+  background: rgba(255, 23, 68, 0.2);
+  border-color: var(--danger);
+  color: var(--danger);
+  box-shadow: 0 0 8px rgba(255, 23, 68, 0.25);
+}
+
+/* Level 2: Şüpheli */
+.notebook-rating-btn[data-level="2"]:hover,
+.notebook-rating-btn[data-level="2"].rating-active {
+  background: rgba(255, 214, 0, 0.15);
+  border-color: var(--warning);
+  color: var(--warning);
+  box-shadow: 0 0 8px rgba(255, 214, 0, 0.2);
+}
+
+/* Level 3: Nötr (default) */
+.notebook-rating-btn[data-level="3"]:hover,
+.notebook-rating-btn[data-level="3"].rating-active {
+  background: rgba(136, 146, 164, 0.15);
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+  box-shadow: 0 0 6px rgba(136, 146, 164, 0.15);
+}
+
+/* Level 4: Güvenli */
+.notebook-rating-btn[data-level="4"]:hover,
+.notebook-rating-btn[data-level="4"].rating-active {
+  background: rgba(0, 230, 118, 0.15);
+  border-color: var(--success);
+  color: var(--success);
+  box-shadow: 0 0 8px rgba(0, 230, 118, 0.2);
+}
+
+/* Level 5: Çok Güvenli */
+.notebook-rating-btn[data-level="5"]:hover,
+.notebook-rating-btn[data-level="5"].rating-active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.25);
+}
+
+/* Rating Tooltip */
+.notebook-rating-btn::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 9px;
+  font-family: var(--font-pixel);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all var(--transition-fast);
+  z-index: 10;
+}
+
+.notebook-rating-btn:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* ── Right Panel: Notes Area ────────────────────────────────── */
+.notebook-notes {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3);
+  background: rgba(0, 0, 0, 0.1);
+  min-height: 0;
+}
+
+.notebook-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+
+.notebook-notes-title {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.notebook-notes-player {
+  font-size: var(--fs-sm);
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.notebook-notes-saved {
+  font-size: var(--fs-xs);
+  color: var(--success);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.notebook-notes-saved.visible {
+  opacity: 1;
+}
+
+/* ── Textarea ───────────────────────────────────────────────── */
+.notebook-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 180px;
+  padding: var(--sp-3);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  resize: none;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  scrollbar-width: thin;
+}
+
+.notebook-textarea:focus {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.1);
+  outline: none;
+}
+
+.notebook-textarea::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Empty State (No Player Selected) ───────────────────────── */
+.notebook-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  flex: 1;
+  padding: var(--sp-8);
+  text-align: center;
+}
+
+.notebook-empty-icon {
+  font-size: 2.5rem;
+  opacity: 0.3;
+  animation: float 3s ease-in-out infinite;
+}
+
+.notebook-empty-text {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  line-height: 2;
+}
+
+/* ── Rating Summary Dot on Player Item ──────────────────────── */
+.notebook-rating-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.notebook-rating-dot.rating-1 {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(255, 23, 68, 0.4);
+}
+
+.notebook-rating-dot.rating-2 {
+  background: var(--warning);
+  box-shadow: 0 0 6px rgba(255, 214, 0, 0.3);
+}
+
+.notebook-rating-dot.rating-3 {
+  background: var(--text-secondary);
+  box-shadow: none;
+}
+
+.notebook-rating-dot.rating-4 {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(0, 230, 118, 0.3);
+}
+
+.notebook-rating-dot.rating-5 {
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .notebook-content {
+    grid-template-columns: 1fr;
+  }
+
+  .notebook-players {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 160px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .notebook-player-item {
+    flex: 0 0 auto;
+    min-width: 120px;
+  }
+
+  .notebook-drawer.notebook-open .notebook-body {
+    max-height: 500px;
+  }
+}
+
+@media (max-width: 480px) {
+  .notebook-rating-btn {
+    width: 22px;
+    height: 20px;
+    font-size: 9px;
+  }
+
+  .notebook-player-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 9px;
+  }
+
+  .notebook-textarea {
+    min-height: 120px;
+  }
+}

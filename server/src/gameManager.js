@@ -7,16 +7,35 @@ export function startGame(room) {
   if (players.length < 3) return { error: 'En az 3 oyuncu gerekli.' };
   if (players.length > 8) return { error: 'En fazla 8 oyuncu olabilir.' };
 
-  // Pick random location
-  const locationIdx = Math.floor(Math.random() * locations.length);
-  const location = locations[locationIdx];
+  // Filter locations based on enabled settings
+  const enabledIds = new Set(room.settings.enabledLocationIds || locations.map(l => l.id));
+  const enabledLocations = locations.filter(l => enabledIds.has(l.id));
+  if (enabledLocations.length < 10) return { error: 'En az 10 konum etkin olmalı.' };
+
+  // Filter out previous location if possible
+  let availableLocations = enabledLocations.filter(l => l.id !== room.previousLocationId);
+  if (availableLocations.length === 0) {
+    availableLocations = enabledLocations; // Fallback if no other locations enabled
+  }
+
+  // Pick random location from available ones
+  const locationIdx = Math.floor(Math.random() * availableLocations.length);
+  const location = availableLocations[locationIdx];
+
+  // Save as previous location for the next game
+  room.previousLocationId = location.id;
 
   // Pick random spy
   const spyIdx = Math.floor(Math.random() * players.length);
   const spyId = players[spyIdx].id;
 
   // Assign roles to non-spy players (shuffle roles and assign)
-  const shuffledRoles = [...location.roles].sort(() => Math.random() - 0.5);
+  // Fisher-Yates shuffle (unbiased)
+  const shuffledRoles = [...location.roles];
+  for (let i = shuffledRoles.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledRoles[i], shuffledRoles[j]] = [shuffledRoles[j], shuffledRoles[i]];
+  }
   const roles = {};
   let roleIdx = 0;
   for (const player of players) {
@@ -54,7 +73,7 @@ export function startGame(room) {
       intervalId: null,
     },
     spyGuessesLeft: room.settings.spyGuessCount,
-    allLocations: locations.map(l => ({ id: l.id, name: l.name, emoji: l.emoji })),
+    allLocations: enabledLocations.map(l => ({ id: l.id, name: l.name, emoji: l.emoji })),
   };
 
   return { success: true, game: room.game };
@@ -74,6 +93,7 @@ export function getPlayerGameData(room, playerId) {
     locations: game.allLocations,
     state: game.state,
     spyGuessesLeft: isSpy ? game.spyGuessesLeft : undefined,
+    previousLocationId: room.previousLocationId,
   };
 }
 
@@ -111,7 +131,7 @@ export function startTimer(room, io, roomCode) {
       clearInterval(game.timer.intervalId);
       game.timer.intervalId = null;
       // Time's up - spy wins
-      endGame(room, io, roomCode, 'SPY', 'Süre doldu! Casus kazandı.');
+      endGame(room, io, roomCode, 'SPY', 'Süre doldu! Casus kazandı.', 'TIMER_EXPIRED');
     }
   }, 1000);
 }
@@ -146,7 +166,7 @@ export function handleSpyGuess(room, playerId, locationId) {
   };
 }
 
-export function endGame(room, io, roomCode, winner, reason) {
+export function endGame(room, io, roomCode, winner, reason, scoreReason, voteRequesterId = null) {
   const game = room.game;
   if (!game) return;
 
@@ -157,6 +177,7 @@ export function endGame(room, io, roomCode, winner, reason) {
   }
 
   game.state = 'GAME_OVER';
+  room.roundNumber = (room.roundNumber || 0) + 1;
 
   const spyPlayer = room.players.find(p => p.id === game.spyId);
 
@@ -170,6 +191,41 @@ export function endGame(room, io, roomCode, winner, reason) {
     };
   }
 
+  // ── Score Calculation ──────────────────────────────────────────
+  // scoreReason: TIMER_EXPIRED | WRONG_INDICTMENT | CORRECT_INDICTMENT | SPY_GUESS_CORRECT | SPY_GUESS_EXHAUSTED
+  const roundScores = {};
+  for (const p of room.players) roundScores[p.id] = 0;
+
+  if (winner === 'SPY') {
+    switch (scoreReason) {
+      case 'TIMER_EXPIRED':
+        roundScores[game.spyId] = 2;
+        break;
+      case 'WRONG_INDICTMENT':
+        roundScores[game.spyId] = 4;
+        break;
+      case 'SPY_GUESS_CORRECT':
+        roundScores[game.spyId] = 4;
+        break;
+    }
+  } else {
+    // PLAYERS win
+    for (const p of room.players) {
+      if (p.id === game.spyId) continue;
+      if (scoreReason === 'CORRECT_INDICTMENT' && p.id === voteRequesterId) {
+        roundScores[p.id] = 2; // Vote initiator gets 2
+      } else {
+        roundScores[p.id] = 1; // Others get 1
+      }
+    }
+  }
+
+  // Accumulate in room.scores
+  if (!room.scores) room.scores = {};
+  for (const [id, pts] of Object.entries(roundScores)) {
+    room.scores[id] = (room.scores[id] || 0) + pts;
+  }
+
   io.to(roomCode).emit('game:over', {
     winner, // 'SPY' or 'PLAYERS'
     reason,
@@ -177,6 +233,9 @@ export function endGame(room, io, roomCode, winner, reason) {
     spyName: spyPlayer?.name || '?',
     location: game.location,
     roles: rolesDetail,
+    roundScores,
+    totalScores: { ...room.scores },
+    roundNumber: room.roundNumber,
   });
 }
 
@@ -185,4 +244,5 @@ export function resetGame(room) {
     clearInterval(room.game.timer.intervalId);
   }
   room.game = null;
+  // scores and roundNumber persist across rounds
 }

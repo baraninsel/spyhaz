@@ -8,6 +8,7 @@ import { renderChat } from '../components/chat.js';
 import { renderKickChat } from '../components/kickChat.js';
 import { formatTime, getTimerClass } from '../components/timer.js';
 import { showToast } from '../components/toast.js';
+import { initNotebookToggle, updateNotebookPlayers } from '../components/notebook.js';
 
 export function renderGame(container) {
   const state = getState();
@@ -103,12 +104,25 @@ export function renderGame(container) {
           </div>
         ` : ''}
       </div>
+
+      <!-- Detective Notebook (Bottom Drawer) -->
+      <div class="notebook-drawer" id="notebook-drawer">
+        <div class="notebook-tab" id="notebook-tab">
+          <span class="notebook-tab-icon">📓</span>
+          <span class="notebook-tab-title">DEDEKTİF NOT DEFTERİ</span>
+          <span class="notebook-tab-hint">tıkla → aç/kapat</span>
+          <button class="notebook-toggle-btn" id="notebook-toggle" aria-label="Not defterini aç/kapat">▲</button>
+        </div>
+        <div class="notebook-body" id="notebook-body"></div>
+      </div>
     </div>
   `;
 
   // Render location grid
   const gridContainer = container.querySelector('#location-grid');
-  const grid = renderLocationGrid(state.locations);
+  const grid = renderLocationGrid(state.locations, {
+    previousLocationId: state.previousLocationId,
+  });
   gridContainer.appendChild(grid);
 
   // Render in-game chat
@@ -191,6 +205,9 @@ export function renderGame(container) {
       showSpyGuessOverlay();
     });
   }
+
+  // Detective Notebook
+  initNotebookToggle(container.querySelector('#notebook-drawer'));
 }
 
 // Recursive role toggle attachment helper
@@ -330,6 +347,7 @@ function showSpyGuessOverlay() {
   const gridContainer = overlay.querySelector('#spy-guess-grid');
   const grid = renderLocationGrid(state.locations, {
     selectable: true,
+    previousLocationId: state.previousLocationId,
     onSelect: (id) => {
       selectedLocationId = id;
       overlay.querySelector('#spy-guess-confirm').disabled = false;

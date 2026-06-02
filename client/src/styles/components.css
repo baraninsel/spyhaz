@@ -539,3 +539,242 @@
   color: var(--text-secondary);
   padding: var(--sp-8);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   LOCATION MANAGER MODAL
+   ══════════════════════════════════════════════════════════════ */
+
+/* Make the location modal wider */
+.loc-manager {
+  width: 100%;
+}
+
+/* Override modal width when location manager is shown */
+.modal-overlay:has(.loc-manager) .modal-content {
+  max-width: 640px;
+}
+
+.loc-manager-toolbar {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.loc-manager-search-wrap {
+  flex: 1;
+  min-width: 180px;
+}
+
+.loc-manager-search {
+  padding: var(--sp-2) var(--sp-3) !important;
+  font-size: var(--fs-sm) !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.loc-manager-search:focus {
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1) !important;
+}
+
+.loc-manager-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.loc-manager-counter {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.loc-counter-num {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-sm);
+  color: var(--accent-cyan);
+  transition: color var(--transition-fast);
+}
+
+.loc-counter-num.danger {
+  color: var(--danger);
+  animation: glow-pulse 1s ease-in-out infinite;
+}
+
+.loc-counter-label {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+/* ── Location Grid ─────────────────────────────────────────── */
+.loc-manager-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-2);
+  max-height: 360px;
+  overflow-y: auto;
+  padding: var(--sp-1);
+  margin-bottom: var(--sp-4);
+}
+
+.loc-toggle-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  position: relative;
+  opacity: 0.5;
+}
+
+.loc-toggle-card:hover {
+  border-color: var(--accent-cyan);
+  background: var(--bg-surface-hover);
+  transform: translateY(-1px);
+}
+
+.loc-toggle-card.active {
+  opacity: 1;
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.06);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.1);
+}
+
+.loc-toggle-card.active:hover {
+  background: rgba(0, 229, 255, 0.1);
+}
+
+.loc-toggle-card.loc-hidden {
+  display: none;
+}
+
+.loc-toggle-emoji {
+  font-size: var(--fs-md);
+  flex-shrink: 0;
+}
+
+.loc-toggle-name {
+  font-size: var(--fs-xs);
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loc-toggle-check {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--accent-cyan);
+  transition: all var(--transition-fast);
+}
+
+.loc-toggle-card.active .loc-toggle-check {
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid var(--accent-cyan);
+}
+
+.loc-manager-hint {
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  padding: var(--sp-2);
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .loc-manager-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  
+  .loc-manager-toolbar {
+    flex-direction: column;
+  }
+  
+  .loc-manager-search-wrap {
+    width: 100%;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RECONNECT OVERLAY
+   ══════════════════════════════════════════════════════════════ */
+.reconnect-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.3s ease-out;
+}
+
+.reconnect-overlay.reconnect-fade-out {
+  animation: fade-out 0.3s ease-out forwards;
+}
+
+.reconnect-box {
+  text-align: center;
+  padding: var(--sp-10);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card), 0 0 40px rgba(0, 229, 255, 0.15);
+  animation: scale-in 0.4s ease-out;
+  min-width: 280px;
+}
+
+.reconnect-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  margin: 0 auto var(--sp-6);
+  animation: reconnect-spin 0.8s linear infinite;
+}
+
+.reconnect-text {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-xs);
+  color: var(--accent-cyan);
+  margin-bottom: var(--sp-3);
+  letter-spacing: 1px;
+}
+
+.reconnect-subtext {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  animation: reconnect-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes reconnect-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes reconnect-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}

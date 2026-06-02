@@ -1,6 +1,6 @@
 // Result Screen - Game over
 import { getSocket } from '../socket.js';
-import { getState, setState, resetGameState } from '../state.js';
+import { getState, setState, resetGameState, clearSession } from '../state.js';
 import { navigateTo } from '../router.js';
 import { saveGameToHistory } from '../utils/history.js';
 import { getAvatarColor, getInitials } from '../components/playerList.js';
@@ -42,6 +42,36 @@ export function renderResult(container, data) {
     `;
   }).join('');
 
+  // Build scoreboard
+  const roundScores = data.roundScores || {};
+  const totalScores = data.totalScores || {};
+  const roundNumber = data.roundNumber || 1;
+
+  // Sort players by total score descending
+  const sortedPlayers = [...state.players].sort((a, b) => (totalScores[b.id] || 0) - (totalScores[a.id] || 0));
+
+  const scoreboardHTML = sortedPlayers.map((p, idx) => {
+    const roundPts = roundScores[p.id] || 0;
+    const totalPts = totalScores[p.id] || 0;
+    const isSpy = data.roles?.[p.id]?.isSpy;
+    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+    const color = getAvatarColor(p.name);
+    return `
+      <div class="score-row ${p.id === state.playerId ? 'score-row-me' : ''}">
+        <div class="score-rank">${medal || (idx + 1)}</div>
+        <div class="score-player">
+          <span class="player-avatar" style="background: ${color}; width: 24px; height: 24px; font-size: 9px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;">
+            ${getInitials(p.name)}
+          </span>
+          <span>${p.name}</span>
+          ${isSpy ? '<span class="badge badge-danger" style="font-size: 7px; padding: 1px 4px;">CASUS</span>' : ''}
+        </div>
+        <div class="score-round ${roundPts > 0 ? 'score-positive' : ''}">+${roundPts}</div>
+        <div class="score-total">${totalPts}</div>
+      </div>
+    `;
+  }).join('');
+
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="result-screen">
@@ -69,6 +99,19 @@ export function renderResult(container, data) {
           <div class="result-roles">${rolesHTML}</div>
         </div>
 
+        <!-- Scoreboard -->
+        <div class="divider"></div>
+        <div class="result-scoreboard">
+          <div class="lobby-section-title" style="margin-bottom: var(--sp-3);">🏆 SKOR TABLOSU — Tur ${roundNumber}</div>
+          <div class="score-header">
+            <div class="score-rank"></div>
+            <div class="score-player">Oyuncu</div>
+            <div class="score-round">Tur</div>
+            <div class="score-total">Toplam</div>
+          </div>
+          ${scoreboardHTML}
+        </div>
+
         <div class="result-actions">
           <button class="btn btn-primary btn-pixel" id="btn-replay" style="font-size:9px;">TEKRAR OYNA</button>
           <button class="btn btn-ghost" id="btn-exit">Çıkış</button>
@@ -85,7 +128,9 @@ export function renderResult(container, data) {
   app.querySelector('#btn-exit').addEventListener('click', () => {
     getSocket().emit('room:leave');
     resetGameState();
+    clearSession();
     setState({ roomCode: null, players: [], isHost: false });
     navigateTo('home');
   });
 }
+

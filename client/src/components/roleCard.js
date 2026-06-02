@@ -7,7 +7,7 @@ export function renderRoleCard(isSpy, location, role) {
 
   if (isSpy) {
     return `
-      <div class="card role-card role-card-spy">
+      <div class="card role-card${hidden ? '' : ' role-card-spy'}">
         <div class="role-card-header-row">
           <button class="role-hide-btn" id="btn-role-toggle" title="${hidden ? 'Rolü Göster' : 'Rolü Gizle'}">
             ${hidden ? '👁️' : '🙈'}
@@ -28,7 +28,7 @@ export function renderRoleCard(isSpy, location, role) {
     `;
   }
   return `
-    <div class="card role-card card-glow">
+    <div class="card role-card${hidden ? '' : ' card-glow'}">
       <div class="role-card-header-row">
         <button class="role-hide-btn" id="btn-role-toggle" title="${hidden ? 'Rolü Göster' : 'Rolü Gizle'}">
           ${hidden ? '👁️' : '🙈'}
