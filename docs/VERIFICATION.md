@@ -21,12 +21,14 @@ Masaüstü tarayıcıda: yeni öğretici, oda oluşturma, önerilen süreyi uygu
 - Arayüz: https://spyhaz.vercel.app/
 - Oyun sunucusu: https://spyhaz-game.blox-trade-radar-baran.workers.dev
 - Vercel önizlemesi: https://spyhaz-fhe8vpy9n-baraninsel0-4282s-projects.vercel.app
+- GitHub dalının sabit önizleme adresi: https://spyhaz-git-codex-reliable-mul-c661c0-baraninsel0-4282s-projects.vercel.app (Vercel giriş koruması korunur).
 - Cloudflare Workers Free ve Vercel Hobby planları hesaplarda doğrulandı; ücretli plana geçilmedi.
-- Cloudflare sürümü: 7112ca84-a74f-4bca-9863-635e4e187238. Kalıcı SQLite oda sınıfı v1 migration ile oluşturuldu.
+- Cloudflare sürümü: 20e45768-10b7-4014-aa9a-766b601107fa. Kalıcı SQLite oda sınıfı v1 migration ile oluşturuldu.
 - Vercel kök dizini depo köküne, derleme komutu npm run build -w client, çıktı client/dist olarak ayarlandı. VITE_BACKEND_URL Production ve Preview ortamlarında yeni Worker'a bağlandı.
 - Canlı Worker üzerinde 15 yapay oyuncu / 2 casus ile HTTP/CORS, eşzamanlı WebSocket, gizli kartlar, hazır aşaması, açık soruya dönüş ve sonuç ekranına dönüş geçti. Deneme üyelikleri çıkarıldı.
 - Masaüstü tarayıcıda internetteki Vercel önizlemesinden oda oluşturuldu; yenileme sonrası aynı isim, kurucu ve oda kodu korundu.
-- Canlı üretim adresi giriş gerektirmeden HTTP 200 döndürüyor; güncel çevrim içi oyun arayüzü tarayıcıda doğrulandı.
+- Canlı üretim adresi giriş gerektirmeden HTTP 200 döndürüyor; oda oluşturma, sohbet ve yenileme sonrası aynı oyuncu/oda/sohbete dönüş tarayıcıda doğrulandı.
+- Kaynaklar codex/reliable-multiplayer dalında GitHub'a gönderildi; değişiklik incelemesi https://github.com/baraninsel/spyhaz/pull/1 içinde. Önceki revizyonda GitHub Actions'ın iki çalıştırması ve Vercel önizleme kontrolü başarılı; son revizyon kontrolleri PR üzerinde izlenebilir.
 
 Dağıtılmış sunucu denemesi açıkça şu komutla tekrarlanabilir (rastgele ve yalnızca test oyuncularını içeren bir oda oluşturur):
 

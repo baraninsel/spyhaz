@@ -20,7 +20,7 @@
     }
   ],
   "vars": {
-    "ALLOWED_ORIGINS": "https://spyhaz.vercel.app,https://spyhaz-fhe8vpy9n-baraninsel0-4282s-projects.vercel.app,http://localhost:5173,http://127.0.0.1:5173"
+    "ALLOWED_ORIGINS": "https://spyhaz.vercel.app,https://spyhaz-fhe8vpy9n-baraninsel0-4282s-projects.vercel.app,https://spyhaz-git-codex-reliable-mul-c661c0-baraninsel0-4282s-projects.vercel.app,http://localhost:5173,http://127.0.0.1:5173"
   },
   "observability": {
     "enabled": true,
