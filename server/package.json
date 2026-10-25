@@ -1,14 +1,17 @@
 {
   "name": "spyhaz-server",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "dev": "node ../scripts/wrangler.mjs dev --port 8787",
+    "build": "node ../scripts/wrangler.mjs deploy --dry-run --outdir dist",
+    "check": "tsc --noEmit",
+    "deploy": "node ../scripts/wrangler.mjs deploy"
   },
-  "dependencies": {
-    "express": "^4.21.0",
-    "socket.io": "^4.8.0",
-    "cors": "^2.8.5"
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260702.1",
+    "typescript": "^5.9.3",
+    "wrangler": "4.152.0"
   }
 }

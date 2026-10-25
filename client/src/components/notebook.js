@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/dom.js';
 // ══════════════════════════════════════════════════════════════
 // Detective Notebook (Dedektif Not Defteri) Component
 // Client-side only — localStorage persistence, no server comm
@@ -33,7 +34,8 @@ function getStorageKey() {
 function loadNotebookData() {
   try {
     const raw = localStorage.getItem(getStorageKey());
-    return raw ? JSON.parse(raw) : {};
+    const data = raw ? JSON.parse(raw) : {};
+    return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
   } catch {
     return {};
   }
@@ -49,7 +51,11 @@ function saveNotebookData(data) {
 
 function getPlayerData(playerId) {
   const data = loadNotebookData();
-  return data[playerId] || { rating: DEFAULT_RATING, notes: '' };
+  const record = data[playerId];
+  return {
+    rating: Number.isInteger(record?.rating) && record.rating >= 1 && record.rating <= 5 ? record.rating : DEFAULT_RATING,
+    notes: typeof record?.notes === 'string' ? record.notes.slice(0, 4000) : '',
+  };
 }
 
 function setPlayerRating(playerId, rating) {
@@ -90,9 +96,9 @@ function renderPlayerItem(player) {
   return `
     <div class="notebook-player-item ${isActive ? 'notebook-player-active' : ''}"
          data-notebook-player="${player.id}">
-      <div class="notebook-player-avatar">${getInitials(player.name)}</div>
+      <div class="notebook-player-avatar">${escapeHtml(getInitials(player.name))}</div>
       <div class="notebook-player-info">
-        <div class="notebook-player-name">${player.name}${isSelf ? ' (Sen)' : ''}</div>
+        <div class="notebook-player-name">${escapeHtml(player.name)}${isSelf ? ' (Sen)' : ''}</div>
       </div>
       <div class="notebook-rating-dot rating-${rating}"></div>
       <div class="notebook-rating" data-rating-for="${player.id}">
@@ -123,14 +129,14 @@ function renderNotesPanel() {
     <div class="notebook-notes-header">
       <div class="notebook-notes-title">
         📝 NOTLAR —
-        <span class="notebook-notes-player">${playerName}</span>
+        <span class="notebook-notes-player">${escapeHtml(playerName)}</span>
       </div>
       <span class="notebook-notes-saved" id="notebook-saved">✓ Kaydedildi</span>
     </div>
     <textarea class="notebook-textarea"
-              id="notebook-textarea"
-              placeholder="${playerName} hakkında not al... (ör: 3. soruda garip cevap verdi, konumu bilmiyor gibi davrandı...)"
-              aria-label="${playerName} için notlar">${notes}</textarea>
+              id="notebook-textarea" maxlength="4000"
+              placeholder="${escapeHtml(playerName)} hakkında not al... (ör: 3. soruda garip cevap verdi, konumu bilmiyor gibi davrandı...)"
+              aria-label="${escapeHtml(playerName)} için notlar">${escapeHtml(notes)}</textarea>
   `;
 }
 
@@ -228,13 +234,7 @@ function handleRatingClick(playerId, level, container) {
 }
 
 function debouncedSaveNotes(value) {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    if (selectedPlayerId) {
-      setPlayerNotes(selectedPlayerId, value);
-      showSavedIndicator();
-    }
-  }, SAVE_DEBOUNCE_MS);
+  if (selectedPlayerId) { setPlayerNotes(selectedPlayerId, value); showSavedIndicator(); }
 }
 
 function showSavedIndicator() {

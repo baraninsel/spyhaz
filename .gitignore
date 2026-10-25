@@ -1,5 +1,11 @@
 node_modules/
-.env
-dist/
 client/dist/
-.DS_Store
+server/dist/
+server/.wrangler/
+.env
+.env.*
+!.env.example
+.dev.vars
+coverage/
+artifacts/
+*.log

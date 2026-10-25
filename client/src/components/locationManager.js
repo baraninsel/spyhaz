@@ -2,41 +2,8 @@
 import { showModal, closeModal } from './modal.js';
 import { showToast } from './toast.js';
 
-// All 30 locations (mirrored from server data)
-const ALL_LOCATIONS = [
-  { id: 1, name: "Uçak", emoji: "✈️" },
-  { id: 2, name: "Banka", emoji: "🏦" },
-  { id: 3, name: "Plaj", emoji: "🏖️" },
-  { id: 4, name: "Tiyatro", emoji: "🎭" },
-  { id: 5, name: "Kumarhane", emoji: "🎰" },
-  { id: 6, name: "Katedral", emoji: "⛪" },
-  { id: 7, name: "Sirk", emoji: "🎪" },
-  { id: 8, name: "Şirket Partisi", emoji: "🎉" },
-  { id: 9, name: "Haçlı Ordusu", emoji: "⚔️" },
-  { id: 10, name: "Spa Merkezi", emoji: "💆" },
-  { id: 11, name: "Büyükelçilik", emoji: "🏛️" },
-  { id: 12, name: "Hastane", emoji: "🏥" },
-  { id: 13, name: "Otel", emoji: "🏨" },
-  { id: 14, name: "Askeri Üs", emoji: "🎖️" },
-  { id: 15, name: "Film Stüdyosu", emoji: "🎬" },
-  { id: 16, name: "Transatlantik", emoji: "🚢" },
-  { id: 17, name: "Yolcu Treni", emoji: "🚂" },
-  { id: 18, name: "Korsan Gemisi", emoji: "🏴‍☠️" },
-  { id: 19, name: "Kutup İstasyonu", emoji: "🧊" },
-  { id: 20, name: "Polis Merkezi", emoji: "🚔" },
-  { id: 21, name: "Restoran", emoji: "🍽️" },
-  { id: 22, name: "Okul", emoji: "🏫" },
-  { id: 23, name: "Benzin İstasyonu", emoji: "⛽" },
-  { id: 24, name: "Uzay İstasyonu", emoji: "🚀" },
-  { id: 25, name: "Denizaltı", emoji: "🔱" },
-  { id: 26, name: "Market", emoji: "🛒" },
-  { id: 27, name: "Üniversite", emoji: "🎓" },
-  { id: 28, name: "Stadyum", emoji: "🏟️" },
-  { id: 29, name: "Kamp Alanı", emoji: "🏕️" },
-  { id: 30, name: "Lunapark", emoji: "🎢" },
-];
-
-const MIN_LOCATIONS = 5;
+import { locations as ALL_LOCATIONS } from '../../../shared/locations.js';
+import { MIN_LOCATIONS } from '../../../shared/rules.js';
 
 /**
  * Open the location manager modal
@@ -64,11 +31,11 @@ export function openLocationManager(currentEnabledIds, onSave) {
       </div>
       <div class="loc-manager-grid" id="loc-grid">
         ${ALL_LOCATIONS.map(loc => `
-          <div class="loc-toggle-card ${enabledIds.has(loc.id) ? 'active' : ''}" data-loc-id="${loc.id}">
+          <button type="button" aria-label="Konumu seç veya kaldır" class="loc-toggle-card ${enabledIds.has(loc.id) ? 'active' : ''}" data-loc-id="${loc.id}">
             <span class="loc-toggle-emoji">${loc.emoji}</span>
             <span class="loc-toggle-name">${loc.name}</span>
-            <div class="loc-toggle-check">${enabledIds.has(loc.id) ? '✓' : ''}</div>
-          </div>
+            <span class="loc-toggle-check">${enabledIds.has(loc.id) ? '✓' : ''}</span>
+          </button>
         `).join('')}
       </div>
       <div class="loc-manager-hint">
