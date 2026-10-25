@@ -68,7 +68,7 @@ function renderHome() {
   app.innerHTML = '<main class="v2-home"><div class="v2-hero-symbol" aria-hidden="true">🕵️</div><p class="v2-kicker">AYNI ODA. BİR GİZLİ CASUS.</p><h1 class="v2-logo">SPYHAZ</h1><p class="v2-home-copy">Herkes nerede olduğunu biliyor.<br>Casus, belli etmeden öğrenmeye çalışıyor.</p><div class="v2-home-actions">' +
     action('Oda oluştur', 'create') + action('Odaya katıl', 'join') +
     (session ? action('↩ Oyuna devam et', 'resume') : '') +
-    '</div><p class="v2-muted">3–15 kişi · Yüz yüze sohbet · Herkes kendi telefonuyla</p><div class="v2-home-links">' +
+    '</div><p class="v2-muted">3–15 kişi · Çevrim içi odalar · Telefon, tablet veya bilgisayar</p><div class="v2-home-links">' +
     action('▶ Nasıl oynanır?', 'tutorial') + action('Oyun geçmişim' + (stats ? ' · ' + stats.totalGames + ' tur' : ''), 'history') +
     '</div><div class="v2-home-preview"><span>🃏 Gizli kartını gör</span><b>→</b><span>💬 Sorularla çöz</span><b>→</b><span>🗳️ Birlikte karar ver</span></div></main>';
 }
@@ -130,7 +130,7 @@ function questionSection(s) {
   const askerConnected = s.players.find(p => p.id === q.currentAskerId)?.connected;
   return '<section class="card">' + title('Soru döngüsü ' + q.cycle) +
     '<p class="v2-muted">' + q.answeredIds.length + ' kişi cevap verdi' + (q.skippedIds.length ? ' · ' + q.skippedIds.length + ' sıra atlandı' : '') + '</p>' +
-    (q.targetId ? '<h3 class="v2-question">' + asker + ' <span aria-label="soruyor">→</span> ' + nameOf(s, q.targetId) + '</h3><p>Soru ve cevabı yüz yüze konuşun.</p>' +
+    (q.targetId ? '<h3 class="v2-question">' + asker + ' <span aria-label="soruyor">→</span> ' + nameOf(s, q.targetId) + '</h3><p>Soruyu ve cevabı konuşarak veya oda sohbetinden paylaşın.</p>' +
       (mine ? serverAction('Soru-cevap tamamlandı', 'questionDone') : '<p class="v2-muted">Soruyu soran kişi tamamlandığında sırayı ilerletecek.</p>') :
       '<h3>' + (mine ? 'Sıra sende. Kime soracaksın?' : asker + ' soru soracak kişiyi seçiyor.') + '</h3>' +
       (mine ? '<div class="v2-targets">' + q.availableTargets.map(id => serverAction(nameOf(s,id), 'target', 'data-player="' + e(id) + '"')).join('') + '</div>' +

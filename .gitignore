@@ -9,3 +9,6 @@ server/.wrangler/
 coverage/
 artifacts/
 *.log
+
+.vercel
+.env*

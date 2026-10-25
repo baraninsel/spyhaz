@@ -1,6 +1,6 @@
 # Spyhaz 2
 
-Arkadaşlarla yüz yüze oynanan, herkesin kendi telefonundan katıldığı Spyfall uyarlaması. Arayüz Vercel'de, kalıcı oyun sunucusu Cloudflare Workers Free üzerinde çalışır.
+Telefon, tablet veya bilgisayardan aynı çevrim içi odaya katılarak oynanan Spyfall uyarlaması. Oyuncular farklı internetlerden ve farklı yerlerden bağlanabilir; soru ve cevaplar konuşularak veya oda sohbetinden paylaşılır. Oyun içinde sesli/görüntülü görüşme bulunmaz. Arayüz Vercel'de, kalıcı oyun sunucusu Cloudflare Workers Free üzerinde çalışır.
 
 ## Neler değişti?
 

@@ -1,6 +1,6 @@
 import { showModal } from './modal.js';
 const steps = [
-  { title: 'Herkes aynı yerde. Bir kişi bilmiyor.', text: 'Örneğin konum Hastane. Normal oyuncular Hastane yazısını görür; casus yalnızca casus olduğunu bilir. Kartını arkadaşlarına gösterme.', scene: 'cards' },
+  { title: 'Aynı gizli konum. Casus bilmiyor.', text: 'Örneğin konum Hastane. Normal oyuncular Hastane yazısını görür; casus yalnızca casus olduğunu bilir. Kartını arkadaşlarına gösterme. Farklı yerlerden bağlanabilirsiniz; soruları konuşarak veya oda sohbetinden paylaşın.', scene: 'cards' },
   { title: 'Konumu söylemeden soru sor.', text: 'Ali: “Burada insanlar neden bekliyor?” Ayşe: “Sıraları gelmediği için.” Cevap konumu bilenlere anlamlı, casusa ise biraz belirsiz olmalı.', scene: 'conversation' },
   { title: 'Cevap veren, sonraki soruyu sorar.', text: 'Ayşe şimdi başka birine sorar. Aynı soru döngüsünde herkes bir kez cevap verir. İlk döngü tamamlandığında suçlama açılır.', scene: 'chain' },
   { title: 'Bir şüpheli seç. Birlikte karar verin.', text: '“Can casus mu?” Şüpheli dışındaki herkes gizlice evet/hayır der. Ekranda gereken evet sayısı yazar. Üçte iki onay gelirse kimlik açılır; gelmezse oyun sürer. Yanlış kişi suçlanırsa casus kazanır.', scene: 'vote' },
