@@ -1,49 +1,16 @@
-// Game History - localStorage
-const HISTORY_KEY = 'spyhaz_history';
-const MAX_HISTORY = 50;
-
+import { readStorage, writeStorage } from '../state.js';
+const KEY = 'spyhaz_history';
+export function getHistory() { try { const value = JSON.parse(readStorage(KEY, '[]')); return Array.isArray(value) ? value.filter(g => g && typeof g === 'object' && ['SPY', 'PLAYERS'].includes(g.winner)) : []; } catch { return []; } }
 export function saveGameToHistory(data) {
   const history = getHistory();
-  history.unshift({
-    date: new Date().toISOString(),
-    location: data.location,
-    role: data.role,
-    isSpy: data.isSpy,
-    winner: data.winner,
-    reason: data.reason,
-    playerCount: data.playerCount,
-  });
-  // Keep only last 50
-  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  if (data.id && history.some(g => g.id === data.id)) return;
+  history.unshift({ ...data, date: new Date().toISOString() });
+  writeStorage(KEY, JSON.stringify(history.slice(0, 50)));
 }
-
-export function getHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-export function clearHistory() {
-  localStorage.removeItem(HISTORY_KEY);
-}
-
+export function clearHistory() { writeStorage(KEY, '[]'); }
 export function getStats() {
   const history = getHistory();
-  if (history.length === 0) return null;
-
-  const totalGames = history.length;
-  const spyGames = history.filter(g => g.isSpy).length;
-  const wins = history.filter(g =>
-    (g.isSpy && g.winner === 'SPY') || (!g.isSpy && g.winner === 'PLAYERS')
-  ).length;
-
-  return {
-    totalGames,
-    spyGames,
-    wins,
-    winRate: Math.round((wins / totalGames) * 100),
-  };
+  if (!history.length) return null;
+  const wins = history.filter(g => g.isSpy ? g.winner === 'SPY' : g.winner === 'PLAYERS').length;
+  return { totalGames: history.length, wins, winRate: Math.round(wins / history.length * 100) };
 }

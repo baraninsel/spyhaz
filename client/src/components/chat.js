@@ -8,17 +8,17 @@ export function renderChat(container) {
   const panel = document.createElement('div');
   panel.className = 'chat-panel';
   panel.innerHTML = `
-    <div class="chat-header" id="chat-toggle">
+    <button type="button" class="chat-header" id="chat-toggle" aria-label="Sohbeti aç veya kapat">
       <span class="chat-header-title">
         💬 SOHBET
         <span class="chat-unread ${state.unreadCount > 0 ? '' : 'hidden'}" id="chat-unread">${state.unreadCount}</span>
       </span>
       <span class="chat-toggle-icon ${state.chatCollapsed ? 'collapsed' : ''}" id="chat-arrow">▼</span>
-    </div>
+    </button>
     <div class="chat-body ${state.chatCollapsed ? 'collapsed' : ''}" id="chat-body"></div>
     <div class="chat-input-area ${state.chatCollapsed ? 'hidden' : ''}" id="chat-input-area">
-      <input type="text" class="chat-input" id="chat-input" placeholder="Mesaj yaz..." maxlength="300" />
-      <button class="chat-send-btn" id="chat-send">▶</button>
+      <input type="text" class="chat-input" id="chat-input" aria-label="Sohbet mesajı" placeholder="Mesaj yaz..." maxlength="300" />
+      <button class="chat-send-btn" id="chat-send" aria-label="Mesajı gönder">▶</button>
     </div>
   `;
 
@@ -68,7 +68,7 @@ function appendMessage(container, msg) {
   const div = document.createElement('div');
   div.className = 'chat-message';
   div.innerHTML = `
-    <span class="chat-msg-sender" style="color: ${isMe ? 'var(--accent-cyan)' : 'var(--accent-purple-light)'}">${msg.senderName}:</span>
+    <span class="chat-msg-sender" style="color: ${isMe ? 'var(--accent-cyan)' : 'var(--accent-purple-light)'}">${escapeHtml(msg.senderName)}:</span>
     <span class="chat-msg-text">${escapeHtml(msg.message)}</span>
     <span class="chat-msg-time">${time}</span>
   `;
