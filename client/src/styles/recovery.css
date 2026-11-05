@@ -1,0 +1,56 @@
+/* Original theme and screen classes stay in the original stylesheets. */
+[hidden] { display:none !important; }
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--accent-cyan); outline-offset:3px; }
+#connection-banner { position:sticky;top:0;z-index:400;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:10px 16px;background:var(--bg-secondary);border-bottom:1px solid var(--warning);font-size:var(--fs-sm); }
+.recovery-hint { color:var(--text-secondary);font-size:var(--fs-sm);line-height:1.65;margin-top:12px; }
+.recovery-notice { border:1px solid var(--border-glow);background:rgba(0,229,255,.05);padding:12px 16px;border-radius:var(--radius-md);margin-bottom:16px;font-size:var(--fs-sm); }
+.recovery-tools summary { cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:var(--fs-sm);color:var(--text-secondary); }
+.recovery-tools-body { display:flex;flex-direction:column;gap:10px; }
+.compact-select { width:auto;min-width:105px;padding:4px 8px; }
+.settings-check { flex-direction:row;justify-content:space-between;align-items:center; }
+.settings-check input { width:20px;height:20px;accent-color:var(--accent-cyan); }
+.form-error { min-height:20px;color:var(--danger);font-size:var(--fs-sm);margin:10px 0; }
+.question-flow { display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin:20px 0;font-size:var(--fs-md); }
+.question-arrow { color:var(--accent-cyan);font-size:24px; }
+.question-targets,.question-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:14px; }
+.question-prompt { text-align:center;padding:12px 0; }
+.phase-clock { display:block;color:var(--warning);text-align:center;margin-bottom:18px;font-family:var(--font-pixel);font-size:var(--fs-sm); }
+.game-topbar-center { display:flex;align-items:center;gap:16px; }
+.game-topbar-center .timer-display { font-size:2.5rem;line-height:1.2; }
+.lobby-actions .btn[data-action=start] { font-family:var(--font-pixel); }
+.result-actions { display:flex;flex-direction:column;gap:12px;margin-top:20px; }
+.result-title { line-height:1.8; }
+.home-footer-link { font:inherit; }
+.home-actions .btn[data-action=resume] { margin-top:4px;font-size:9px; }
+.home-screen .home-decoration { pointer-events:none; }
+.modal-content { max-height:92vh;max-height:92dvh; }
+.modal-body { max-height:72vh;overflow:auto; }
+.input-group { margin-bottom:16px; }
+.input-label { display:block;margin:12px 0 8px; }
+.settings-form .btn,.join-form .btn { margin-top:12px; }
+.tutorial-controls { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px; }
+.tutorial-scene { padding:18px;margin:12px 0;min-height:160px; }
+.demo-cards,.demo-chain,.demo-ballot,.demo-map { display:flex;flex-wrap:wrap;gap:10px;justify-content:center; }
+.demo-card { display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px;border:1px solid var(--accent-cyan);border-radius:var(--radius-md);font-size:28px; }
+.demo-card strong,.demo-card small { font-size:var(--fs-sm); }
+.demo-secret { border-color:var(--danger); }
+.demo-bubble { margin:10px 0;padding:12px;border-radius:var(--radius-md);background:rgba(0,229,255,.09); }
+.demo-bubble.answer { margin-left:20px;background:rgba(124,77,255,.1); }
+.demo-chain span,.demo-map span { padding:10px;border:1px solid var(--border-color);border-radius:var(--radius-sm); }
+.demo-ballot { flex-direction:column;align-items:center; }
+.demo-finish { text-align:center;font-size:32px; }
+@media(max-width:768px) {
+  .game-topbar { gap:12px; }
+  .game-topbar-right { flex-wrap:wrap;gap:6px; }
+  .game-topbar-right .btn { min-height:40px; }
+  .game-players-list { max-height:260px;overflow:auto; }
+  .question-targets .btn { min-height:44px; }
+  .lobby-col .btn,.input { min-height:44px; }
+  .location-card { min-height:70px; }
+  .notebook-tab-hint { display:none; }
+  .modal-body { font-size:14px; }
+  .modal-close { min-width:40px;min-height:40px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation:none !important;transition:none !important;scroll-behavior:auto !important; }
+}

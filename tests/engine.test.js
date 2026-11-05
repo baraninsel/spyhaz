@@ -360,3 +360,49 @@ test('a spectator entrusted with hosting can recover the round without learning 
   const result = command(h.room, spectator, {id:crypto.randomUUID(),type:'host:skip',contextId:view.contextId,turnId:view.hostControls.turnId,payload:{}}, h.now);
   assert.equal(result.ack.ok, true);
 });
+
+test('host can skip an unselected offline participant and unlock the first cycle without fabricating an answer', () => {
+  const h = setup(8).start();
+  const away = h.players.find(p => p.id !== h.room.hostId && p.id !== h.room.game.question.currentAskerId);
+  disconnectPlayer(h.room, away.id, 'generation-' + away.id, h.now);
+  while (availableTargets(h.room).length) {
+    const asker = h.room.game.question.currentAskerId;
+    h.send(asker, 'question:select', { targetId: availableTargets(h.room)[0] });
+    h.send(asker, 'question:done');
+  }
+  assert.equal(h.room.game.question.cycle, 1);
+  assert.equal(h.raw(h.room.hostId, 'host:skip', { playerId: h.room.hostId }).ack.ok, false);
+  h.send(h.room.hostId, 'host:skip', { playerId: away.id });
+  assert.equal(h.room.game.question.cycle, 2);
+  assert.equal(h.room.game.answeredEver.includes(away.id), false);
+  assert.equal(snapshot(h.room, h.room.hostId).game.canAccuse, true);
+});
+
+test('a delayed vote from the previous ballot cannot vote on a different suspect', () => {
+  const h = setup(8).start().cycle();
+  h.send(h.players[0].id, 'vote:accuse', { suspectId:h.players[7].id });
+  const ballotId = snapshot(h.room, h.players[1].id).game.ballot.id;
+  h.now += 30_001; tick(h.room, h.now);
+  h.send(h.players[2].id, 'vote:accuse', { suspectId:h.players[6].id });
+  const result = h.raw(h.players[1].id, 'vote:cast', { accept:true }, { ballotId });
+  assert.equal(result.ack.ok, false);
+  assert.match(result.ack.error, /Oylama değişti/);
+  assert.equal(Object.hasOwn(h.room.game.ballot.votes,h.players[1].id),false);
+});
+
+test('spectator host receives only a public result and can return everyone to the lobby', () => {
+  const h = setup(4), watcher = h.players[3].id;
+  disconnectPlayer(h.room,watcher,'generation-'+watcher,h.now);
+  h.send(h.room.hostId,'game:start');
+  connectPlayer(h.room,watcher,'returned',h.now);
+  h.send(h.room.hostId,'host:transfer',{playerId:watcher});
+  const during = snapshot(h.room,watcher);
+  assert.equal(during.game,null);
+  assert.equal(during.publicResult,undefined);
+  h.send(watcher,'host:abort');
+  const after = snapshot(h.room,watcher);
+  assert.equal(after.game,null);
+  assert.equal(after.publicResult.winner,'CANCELLED');
+  h.send(watcher,'game:lobby');
+  assert.equal(snapshot(h.room,watcher).state,'LOBBY');
+});

@@ -203,7 +203,7 @@ function resolveBallot(room, now) {
     if (!ordered.length || ordered[0][1] === ordered[1]?.[1]) return end(room, 'SPY', 'TIME_EXPIRED', now);
     g.state = 'FINAL_ACCUSATION';
     g.phaseDeadline = now + BALLOT_MS;
-    g.ballot = { kind: 'accusation', suspectId: ordered[0][0], requesterId: null, votes: {}, isFinal: true };
+    g.ballot = { id: uid(), kind: 'accusation', suspectId: ordered[0][0], requesterId: null, votes: {}, isFinal: true };
     room.notice = 'Son suçlama: gerekli onay sayısına ulaşılmalı.';
     return;
   }
@@ -247,7 +247,7 @@ export function tick(room, now = Date.now()) {
     g.deadline = null;
     g.state = 'FINAL_NOMINATION';
     g.phaseDeadline = now + BALLOT_MS;
-    g.ballot = { kind: 'nomination', votes: {}, suspectId: null, requesterId: null, isFinal: true };
+    g.ballot = { id: uid(), kind: 'nomination', votes: {}, suspectId: null, requesterId: null, isFinal: true };
     room.notice = 'Süre doldu. Son oylama için bir şüpheli seç.';
     changed = true;
   } else if (g?.phaseDeadline !== null && g?.phaseDeadline !== undefined && now >= g.phaseDeadline) {
@@ -301,7 +301,18 @@ function execute(room, id, cmd, now) {
     }
     case 'host:skip': {
       host(room, id); phase(room, 'PLAYING');
-      const q = g.question, skipped = q.targetId || q.currentAskerId;
+      const q = g.question, skipped = data.playerId || q.targetId || q.currentAskerId;
+      if (data.playerId !== undefined) {
+        assert(g.participantIds.includes(data.playerId) && !member(room, data.playerId)?.connected, 'Yalnızca bağlantısı kopan bir katılımcı seçilebilir.');
+        assert(!q.answeredIds.includes(skipped) && !q.skippedIds.includes(skipped), 'Bu oyuncunun sırası zaten işlendi.');
+        if (skipped !== q.targetId && skipped !== q.currentAskerId) {
+          q.skippedIds.push(skipped);
+          if (!q.targetId) { q.turnId = uid(); normalizeQuestion(room); }
+          g.interventions.push({ kind: 'skip', playerId: skipped, at: now });
+          room.notice = 'Kurucu bağlantısı kopan oyuncuyu bu döngüde atlattı. Cevap yazılmadı.';
+          break;
+        }
+      }
       if (!q.answeredIds.includes(skipped) && !q.skippedIds.includes(skipped)) q.skippedIds.push(skipped);
       if (!member(room, q.currentAskerId)?.connected && !q.answeredIds.includes(q.currentAskerId) && !q.skippedIds.includes(q.currentAskerId)) q.skippedIds.push(q.currentAskerId);
       const options = participants(room).filter(p => p.connected && !p.withdrawn && p.id !== skipped);
@@ -320,9 +331,10 @@ function execute(room, id, cmd, now) {
       assert(data.suspectId !== id && g.participantIds.includes(data.suspectId), 'Geçersiz şüpheli.');
       g.accusationUsedIds.push(id);
       pauseClock(g, now); g.state = 'ACCUSATION'; g.phaseDeadline = now + BALLOT_MS;
-      g.ballot = { kind: 'accusation', suspectId: data.suspectId, requesterId: id, votes: { [id]: true }, isFinal: false }; break;
+      g.ballot = { id: uid(), kind: 'accusation', suspectId: data.suspectId, requesterId: id, votes: { [id]: true }, isFinal: false }; break;
     case 'vote:cast':
       assert(g && ['ACCUSATION', 'FINAL_ACCUSATION', 'FINAL_NOMINATION'].includes(g.state), 'Aktif oylama yok.');
+      assert(cmd.ballotId === (g.ballot.id || g.id + ':' + g.phaseDeadline), 'Oylama değişti. Güncel oylamayı bekle.');
       assert(!Object.hasOwn(g.ballot.votes, id), 'Oyunu zaten verdin.');
       if (g.ballot.kind === 'nomination') {
         assert(data.suspectId !== id && g.participantIds.includes(data.suspectId), 'Geçersiz şüpheli.');
@@ -421,7 +433,8 @@ export function snapshot(room, playerId, now = Date.now()) {
     players: room.players.map(p => ({ id: p.id, name: p.name, connected: p.connected && !p.withdrawn, isHost: p.id === room.hostId })),
     chat: room.chat, scores: room.scores, roundNumber: room.roundNumber, notice: room.notice,
     state: g?.state || 'LOBBY', game: null, summaries: g?.state === 'RESULT' ? room.summaries : undefined,
-    hostControls: g && room.hostId === playerId ? { turnId: g.question.turnId, forceReadyAt: g.forceReadyAt, timerPaused: g.deadline === null } : null,
+    publicResult: g?.state === 'RESULT' ? g.result : undefined,
+    hostControls: g && room.hostId === playerId ? { participantIds: g.participantIds, turnId: g.question.turnId, forceReadyAt: g.forceReadyAt, timerPaused: g.deadline === null } : null,
   };
   if (!g || !g.participantIds.includes(playerId)) return common;
   const q = g.question, b = g.ballot;
@@ -437,7 +450,7 @@ export function snapshot(room, playerId, now = Date.now()) {
     myGuessSubmitted: Object.hasOwn(g.guesses, playerId),
     revealedSpies: g.state === 'SPY_GUESS' ? g.spyIds.map(id => ({ id, name: member(room, id)?.name || '?' })) : undefined,
     ballot: b ? {
-      kind: b.kind, suspectId: b.suspectId, requesterId: b.requesterId, isFinal: b.isFinal,
+      id: b.id || g.id + ':' + g.phaseDeadline, kind: b.kind, suspectId: b.suspectId, requesterId: b.requesterId, isFinal: b.isFinal,
       threshold: approvalThreshold(g.participantIds.length),
       eligible: b.kind === 'nomination' || b.suspectId !== playerId,
       myVote: Object.hasOwn(b.votes, playerId) ? b.votes[playerId] : null,

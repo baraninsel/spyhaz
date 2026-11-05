@@ -2,6 +2,8 @@
 
 Oyuna giriş: **[spyhaz.vercel.app](https://spyhaz.vercel.app/)**
 
+Alternatif ücretsiz giriş: **[Cloudflare adresi](https://spyhaz-game.blox-trade-radar-baran.workers.dev/)**. İki adres de aynı oyun odalarını kullanır; tarayıcıdaki kişisel oturum kayıtları adres başına ayrıdır.
+
 Telefon, tablet veya bilgisayardan aynı çevrim içi odaya katılarak oynanan Spyfall uyarlaması. Oyuncular farklı internetlerden ve farklı yerlerden bağlanabilir; soru ve cevaplar konuşularak veya oda sohbetinden paylaşılır. Oyun içinde sesli/görüntülü görüşme bulunmaz. Arayüz Vercel'de, kalıcı oyun sunucusu Cloudflare Workers Free üzerinde çalışır.
 
 ## Neler değişti?
@@ -14,6 +16,8 @@ Telefon, tablet veya bilgisayardan aynı çevrim içi odaya katılarak oynanan S
 - Casus başına tek konum tahmini. İki casusta birinin yakalanması turu bitirir.
 - Süre bitince son aday ve onay oylaması; doğrudan casus galibiyeti yok.
 - Yenileme, uygulama değiştirme ve bağlantı kesilmesinde aynı oyuncu ve turla dönüş.
+- İlk sürümün koyu, cyan/mor teması ve giriş/lobi/oyun/sonuç ekranları korunur.
+- WebSocket açılamazsa kimliği doğrulanmış HTTP bağlantısına otomatik geçiş; görünür sayfada 5 saniyede bir durum yenileme.
 - Kurucu araçları: sıra atlatma, yönetimi devretme, hazır beklemesini aşma, puansız iptal.
 - Hareketli örnek tur öğreticisi; sohbet, özel notlar, geçmiş ve ayar dosyaları.
 
@@ -81,6 +85,8 @@ Mevcut projeyi ve spyhaz.vercel.app adresini koruyun:
 
 Kök vercel.json, çıktı dizinini ve güvenlik başlıklarını içerir. Bu değişken bir erişim anahtarı değildir; oyun sunucusunun genel adresidir.
 
+`vercel.json` içindeki `/api` yönlendirmesini Worker adresiyle birlikte güncel tutun. Oda girişi ve HTTP yedek bağlantısı aynı Vercel adresinden çalışır. WebSocket doğrudan Worker'a bağlanır; dış yönlendirmede WebSocket aktarımı varsayılmaz. Worker yayını ayrıca `client/dist` arayüzünü ücretsiz statik dosyalar olarak sunar.
+
 ### 3. Geçiş kontrolü
 
 1. Önce yeni Worker ve Vercel önizlemesinde bir test odası açın.
@@ -93,6 +99,8 @@ Eski Render odaları bellekte tutulduğu için taşınamaz. Eski oturum yeni sun
 ## Bağlantı davranışı
 
 - İnternet gidince süre devam eder. Dönüşte güncel ekran sunucudan yüklenir.
+- WebSocket 3,5 saniyede kurulamazsa ya da koparsa HTTP bağlantısı denenir. Bu yolda görünür sayfa her 5 saniyede yenilenir; arka planda düzenli sorgulama yapılmaz. Oyuncu varlığı en fazla 75 saniyelik kalıcı süreyle izlenir; ardından kurucu değişimi için 30 saniyelik bekleme başlar.
+- HTTP yedeği de ücretsiz kota kullanır; 15 açık oyuncu yalnızca durum yenilemeleri için saatte yaklaşık 10.800 istek üretir. Ücretsiz sınırlar aşılırsa hizmet hata verebilir; ücretli plana otomatik geçiş yoktur.
 - Tek oyuncu kimliği aynı odada bir etkin sekmeye aittir. İkinci sekme açılırsa ilk sekmeye bilgi verilir; sekmeler otomatik olarak birbirini ele geçirmeye çalışmaz.
 - Bağlantısız kurucu için 30 saniye sonra yönetim en eski bağlı oyuncuya geçer.
 - Tüm oyuncular ayrılırsa oda 24 saat saklanır. Yeniden bağlanıldığında bu süre iptal edilir.

@@ -18,7 +18,7 @@ function scene(type) {
 export function showTutorial() {
   let index = 0, autoplay = null;
   const stop = () => { if (autoplay) clearInterval(autoplay); autoplay = null; };
-  showModal('NASIL OYNANIR?', '<div id="tutorial-stage" aria-live="polite"></div><div class="tutorial-controls"><button class="btn btn-ghost" id="tut-prev">← Geri</button><span id="tut-page"></span><button class="btn btn-primary" id="tut-next">İleri →</button></div><button class="btn btn-ghost btn-block" id="tut-play">▶ Örnek turu oynat</button><p class="v2-muted">Meslekler isteğe bağlıdır. İyi soru: konumu bilen anlar, casus hemen çözemez.</p>', {
+  showModal('NASIL OYNANIR?', '<div id="tutorial-stage" aria-live="polite"></div><div class="tutorial-controls"><button class="btn btn-ghost" id="tut-prev">← Geri</button><span id="tut-page"></span><button class="btn btn-primary" id="tut-next">İleri →</button></div><button class="btn btn-ghost btn-block" id="tut-play">▶ Örnek turu oynat</button><p class="recovery-hint">Meslekler isteğe bağlıdır. İyi soru: konumu bilen anlar, casus hemen çözemez.</p>', {
     onClose: stop,
     onMount(overlay) {
       const paint = () => {

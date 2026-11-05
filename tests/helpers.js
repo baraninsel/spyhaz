@@ -9,7 +9,7 @@ export function setup(n = 8, settings = {}, now = 1_000_000) {
     players, now,
     get room() { return room; }, set room(value) { room = value; },
     raw(id, type, payload = {}, extra = {}) {
-      const input = { id: crypto.randomUUID(), type, contextId: contextId(room), turnId: room.game?.question.turnId, payload, ...extra };
+      const input = { id: crypto.randomUUID(), type, contextId: contextId(room), turnId: room.game?.question.turnId, ballotId: room.game?.ballot?.id, payload, ...extra };
       const result = command(room, id, input, this.now); room = result.room; return { ...result, input };
     },
     send(id, type, payload = {}, extra = {}) {

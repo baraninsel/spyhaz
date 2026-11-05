@@ -59,6 +59,15 @@ export function openLocationManager(currentEnabledIds, onSave) {
         counterNum.textContent = enabledIds.size;
         counterNum.className = `loc-counter-num ${enabledIds.size < MIN_LOCATIONS ? 'danger' : ''}`;
       }
+      function syncCards() {
+        grid.querySelectorAll('.loc-toggle-card').forEach(card => {
+          const active = enabledIds.has(Number(card.dataset.locId));
+          card.classList.toggle('active', active);
+          card.querySelector('.loc-toggle-check').textContent = active ? '✓' : '';
+          card.setAttribute('aria-pressed', String(active));
+        });
+        updateCounter();
+      }
 
       // Toggle individual location
       grid.addEventListener('click', (e) => {
@@ -83,38 +92,19 @@ export function openLocationManager(currentEnabledIds, onSave) {
           card.querySelector('.loc-toggle-check').textContent = '✓';
         }
 
-        updateCounter();
+        syncCards();
       });
 
       // Select All
       overlay.querySelector('#loc-select-all').addEventListener('click', () => {
         ALL_LOCATIONS.forEach(loc => enabledIds.add(loc.id));
-        grid.querySelectorAll('.loc-toggle-card').forEach(card => {
-          if (!card.classList.contains('loc-hidden')) {
-            card.classList.add('active');
-            card.querySelector('.loc-toggle-check').textContent = '✓';
-          }
-        });
-        updateCounter();
+        syncCards();
       });
 
       // Deselect All (to minimum)
       overlay.querySelector('#loc-deselect-all').addEventListener('click', () => {
-        // Keep first MIN_LOCATIONS enabled
-        enabledIds.clear();
-        const visible = [...grid.querySelectorAll('.loc-toggle-card:not(.loc-hidden)')];
-        visible.forEach((card, i) => {
-          const locId = parseInt(card.dataset.locId);
-          if (i < MIN_LOCATIONS) {
-            enabledIds.add(locId);
-            card.classList.add('active');
-            card.querySelector('.loc-toggle-check').textContent = '✓';
-          } else {
-            card.classList.remove('active');
-            card.querySelector('.loc-toggle-check').textContent = '';
-          }
-        });
-        updateCounter();
+        enabledIds = new Set(ALL_LOCATIONS.slice(0, MIN_LOCATIONS).map(loc => loc.id));
+        syncCards();
         showToast(`İlk ${MIN_LOCATIONS} konum seçili bırakıldı.`, 'info');
       });
 
@@ -133,17 +123,24 @@ export function openLocationManager(currentEnabledIds, onSave) {
       overlay.querySelector('#loc-cancel').addEventListener('click', closeModal);
 
       // Save
-      overlay.querySelector('#loc-save').addEventListener('click', () => {
+      overlay.querySelector('#loc-save').addEventListener('click', async event => {
         if (enabledIds.size < MIN_LOCATIONS) {
           showToast(`En az ${MIN_LOCATIONS} konum seçili olmalıdır!`, 'error');
           return;
         }
-        onSave([...enabledIds].sort((a, b) => a - b));
-        closeModal();
-        showToast(`${enabledIds.size} konum seçildi.`, 'success');
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          const result = await onSave([...enabledIds].sort((a, b) => a - b));
+          if (result === null || result === false) return;
+          closeModal();
+          showToast(`${enabledIds.size} konum seçildi.`, 'success');
+        } catch (error) { showToast(error.message || 'Ayar kaydedilemedi. Tekrar dene.', 'error'); }
+        finally { button.disabled = false; }
       });
 
       // Focus search
+      syncCards();
       searchInput.focus();
     }
   });

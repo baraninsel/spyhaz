@@ -1,6 +1,8 @@
 // Chat Panel Component
-import { getSocket } from '../socket.js';
+import { sendCommand } from '../socket.js';
 import { getState, setState } from '../state.js';
+import { showToast } from './toast.js';
+let sending = false;
 
 export function renderChat(container) {
   const state = getState();
@@ -18,7 +20,7 @@ export function renderChat(container) {
     <div class="chat-body ${state.chatCollapsed ? 'collapsed' : ''}" id="chat-body"></div>
     <div class="chat-input-area ${state.chatCollapsed ? 'hidden' : ''}" id="chat-input-area">
       <input type="text" class="chat-input" id="chat-input" aria-label="Sohbet mesajı" placeholder="Mesaj yaz..." maxlength="300" />
-      <button class="chat-send-btn" id="chat-send" aria-label="Mesajı gönder">▶</button>
+      <button class="chat-send-btn" id="chat-send" data-server-action data-blocked="${sending}" aria-label="Mesajı gönder">▶</button>
     </div>
   `;
 
@@ -46,12 +48,21 @@ export function renderChat(container) {
   const input = panel.querySelector('#chat-input');
   const sendBtn = panel.querySelector('#chat-send');
 
-  function sendMessage() {
+  async function sendMessage() {
     const message = input.value.trim();
-    if (!message) return;
-    getSocket().emit('chat:send', { message });
-    input.value = '';
-    input.focus();
+    if (!message || sending) return;
+    sending = true; sendBtn.disabled = true; sendBtn.dataset.blocked = 'true';
+    try {
+      await sendCommand('chat:send', { message });
+      const current = document.getElementById('chat-input');
+      if (current?.value.trim() === message) current.value = '';
+      current?.focus();
+    } catch (error) { showToast(error.message, 'error'); }
+    finally {
+      sending = false;
+      const current = document.getElementById('chat-send');
+      if (current) { current.dataset.blocked = 'false'; current.disabled = false; }
+    }
   }
 
   sendBtn.addEventListener('click', sendMessage);
@@ -73,6 +84,11 @@ function appendMessage(container, msg) {
     <span class="chat-msg-time">${time}</span>
   `;
   container.appendChild(div);
+}
+
+export function renderChatMessages(container, messages) {
+  container.innerHTML = '';
+  messages.forEach(message => appendMessage(container, message));
 }
 
 export function handleNewChatMessage(msg) {

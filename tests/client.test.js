@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { escapeHtml } from '../client/src/utils/dom.js';
 import { renderPlayerList } from '../client/src/components/playerList.js';
-import { saveSession, loadSession, clearSession, readStorage } from '../client/src/state.js';
+import { saveSession, loadSession, clearSession, readStorage, writeStorage } from '../client/src/state.js';
+import { newId } from '../client/src/utils/platform.js';
 import { importPresetFromText, exportPresetText } from '../client/src/utils/presetManager.js';
 import { saveGameToHistory, getHistory } from '../client/src/utils/history.js';
 const values = new Map();
@@ -52,4 +53,26 @@ test('corrupt local records cannot break the home screen or session recovery', (
   values.set('spyhaz_history', '[null,3,{},{"winner":"invalid"}]');
   assert.equal(loadSession('x'), null);
   assert.deepEqual(getHistory(), []);
+});
+
+test('an invite restores the matching room even if another room was saved more recently', () => {
+  saveSession({backend:'invite-server',code:'ABC-DEF',playerId:'original',token:'a'});
+  saveSession({backend:'invite-server',code:'UVW-XYZ',playerId:'newer',token:'b'});
+  assert.equal(loadSession('invite-server','ABC-DEF').playerId,'original');
+});
+
+test('a quota failure reads the newer fallback value instead of the stale local value', () => {
+  const previousLocal = globalThis.localStorage, previousSession = globalThis.sessionStorage;
+  const fallback = new Map();
+  globalThis.localStorage = {getItem:()=>'old',setItem(){throw new Error('QuotaExceededError');}};
+  globalThis.sessionStorage = {getItem:key=>fallback.get(key)??null,setItem:(key,value)=>fallback.set(key,value),removeItem:key=>fallback.delete(key)};
+  try { assert.equal(writeStorage('setting','new'),true); assert.equal(readStorage('setting'),'new'); }
+  finally { globalThis.localStorage=previousLocal; globalThis.sessionStorage=previousSession; }
+});
+
+test('older Safari without randomUUID can still create secure player and command IDs', t => {
+  t.mock.method(crypto,'randomUUID',undefined);
+  const ids = new Set(Array.from({length:100},newId));
+  assert.equal(ids.size,100);
+  for (const id of ids) assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 });

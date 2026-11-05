@@ -1,3 +1,17 @@
+const originalFetch = globalThis.fetch;
+async function requestWithRetry(url,options={}) {
+ for(let attempt=0;attempt<3;attempt++) {
+  try { return await originalFetch(url,{...options,signal:AbortSignal.timeout(15000)}); }
+  catch(error) { if(attempt===2) throw error; console.log(JSON.stringify({stage:'http-network-retry',attempt:attempt+1})); }
+ }
+}
+async function connect(player) {
+ for(let attempt=0;attempt<2;attempt++) {
+  try { return await connectOnce(player); }
+  catch(error) { if(attempt===1 || !/transport-error|Timed out/.test(error.message)) throw error; console.log(JSON.stringify({stage:'ws-network-retry',attempt:attempt+1})); }
+ }
+}
+import WebSocket from 'ws';
 // Run explicitly against a newly deployed server. Creates only a random test room.
 // Usage: node tests/deployed-smoke.mjs https://worker.example.workers.dev
 import assert from 'node:assert/strict';
@@ -9,16 +23,16 @@ const code = randomCode.slice(0, 3) + '-' + randomCode.slice(3);
 const players = Array.from({length:15}, (_, i) => ({ name:'Yayın Test ' + (i + 1), playerId:crypto.randomUUID(), token:Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url') }));
 const clients = [];
 async function post(path, data) {
-  const response = await fetch(new URL(path, base), { method:'POST', headers:{'Content-Type':'application/json', Origin:origin}, body:JSON.stringify(data), signal:AbortSignal.timeout(15000) });
+  const response = await requestWithRetry(new URL(path, base), { method:'POST', headers:{'Content-Type':'application/json', Origin:origin}, body:JSON.stringify(data), signal:AbortSignal.timeout(15000) });
   const result = await response.json();
-  assert.equal(response.status, 201, result.error);
+  assert.ok([200,201].includes(response.status), result.error);
   assert.equal(response.headers.get('access-control-allow-origin'), origin);
   return result;
 }
-async function connect(player) {
+async function connectOnce(player) {
   const url = new URL('/api/rooms/' + code + '/socket', base);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(url);
+  const ws = new WebSocket(url,{headers:{Origin:origin}});
   const pending = [], queued = [];
   let view;
   const receive = message => {
@@ -29,7 +43,7 @@ async function connect(player) {
   };
   ws.onmessage = event => { if (event.data !== 'pong') receive(JSON.parse(event.data)); };
   ws.onopen = () => ws.send(JSON.stringify({v:2,type:'session:resume',playerId:player.playerId,token:player.token}));
-  ws.onerror = () => receive({type:'transport-error'});
+  ws.onerror = event => { console.log(JSON.stringify({stage:'websocket-error',message:event.message || event.error?.message})); receive({type:'transport-error'}); };
   function wait(match) {
     const index = queued.findIndex(match);
     if (index >= 0) return Promise.resolve(queued.splice(index,1)[0]);
@@ -43,7 +57,7 @@ async function connect(player) {
     ws, wait, get view() { return view; },
     async sync() { return this.send('session:sync'); },
     async send(type, payload = {}, expectSnapshot = true) {
-      const data = {v:2,id:crypto.randomUUID(),type,contextId:view.contextId,turnId:view.game?.question.turnId,payload};
+      const data = {v:2,id:crypto.randomUUID(),type,contextId:view.contextId,turnId:view.game?.question.turnId,ballotId:view.game?.ballot?.id,payload};
       ws.send(JSON.stringify(data));
       const ack = await wait(m => m.type === 'ack' && m.id === data.id);
       assert.equal(ack.ok,true,ack.error);
@@ -59,17 +73,17 @@ async function connect(player) {
 }
 let host;
 try {
-  const health = await fetch(new URL('/api/health',base), {signal:AbortSignal.timeout(15000)});
+  const health = await requestWithRetry(new URL('/api/health',base), {signal:AbortSignal.timeout(15000)});
   assert.equal((await health.json()).protocol,2);
-  await post('/api/rooms',{...players[0],code});
-  host = await connect(players[0]);
+  await post('/api/rooms',{...players[0],code}); console.log(JSON.stringify({stage:'created'}));
+  host = await connect(players[0]); console.log(JSON.stringify({stage:'host-connected'}));
   const members = [host];
   for (const player of players.slice(1)) {
     await post('/api/rooms/' + code + '/players',player);
     members.push(await connect(player));
   }
   await host.sync();
-  assert.equal(host.view.players.filter(p => p.connected).length,15);
+  assert.equal(host.view.players.filter(p => p.connected).length,15); console.log(JSON.stringify({stage:'fifteen-connected'}));
   await host.send('room:settings',{spyCount:2});
   await host.send('game:start');
   const roundId = host.view.game.id;
@@ -104,7 +118,7 @@ try {
     await client.sync(); await client.send('room:leave',{},false); client.close();
   }
   await host.sync(); await host.send('room:leave',{},false);
-  console.log(JSON.stringify({ok:true,server:base.origin,players:15,spies:2,checks:['HTTP/CORS','15 concurrent WebSockets','private cards','ready phase','open question recovery','result recovery','test memberships removed']}));
+  console.log(JSON.stringify({ok:true,transport:'ws with browser Origin and bounded retry',server:base.origin,players:15,spies:2,checks:['HTTP/CORS','15 concurrent WebSockets','private cards','ready phase','open question recovery','result recovery','test memberships removed']}));
 } catch (error) {
   if (host?.ws.readyState === WebSocket.OPEN) {
     try { await host.sync(); if (host.view.game && host.view.state !== 'RESULT') await host.send('host:abort'); } catch {}

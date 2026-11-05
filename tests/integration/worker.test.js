@@ -50,7 +50,7 @@ async function session(mf, code, identity, expected = 'snapshot') {
   return {
     ws, first, wait, get view() { return latest; },
     async send(type, payload = {}, extra = {}) {
-      const data = { v:2, id:crypto.randomUUID(), type, contextId:latest.contextId, turnId:latest.game?.question.turnId, payload, ...extra };
+      const data = { v:2, id:crypto.randomUUID(), type, contextId:latest.contextId, turnId:latest.game?.question.turnId, ballotId:latest.game?.ballot?.id, payload, ...extra };
       ws.send(JSON.stringify(data));
       const ack = await wait(msg => msg.type === 'ack' && msg.id === data.id);
       if (ack.ok) await wait(msg => msg.type === 'snapshot' && msg.revision >= ack.revision);
@@ -182,4 +182,65 @@ test('Worker resumes role reveal, a selected question, a submitted ballot and fi
   assert.equal(result.view.state,'RESULT');
   assert.equal(result.view.game.result.winner,'CANCELLED');
   assert.deepEqual(result.view.scores,{});
+});
+
+test('a slow join upload cannot block authenticated game commands', {timeout:15000}, async t=>{
+  const mf=runtime(await storePath()), player=identity('Beklemeyen kurucu');
+  const clients=[];
+  t.after(async()=>{clients.forEach(c=>c.close());await mf.dispose();});
+  await post(mf,'/api/rooms',{...player,code:'SLW-BDY'});
+  const host=await session(mf,'SLW-BDY',player);clients.push(host);
+  const body=new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('{'));}});
+  const stalled=mf.dispatchFetch('http://localhost/api/rooms/SLW-BDY/players',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body,duplex:'half'});
+  await new Promise(resolve=>setTimeout(resolve,100));
+  const started=Date.now();
+  assert.equal((await host.send('session:sync')).ack.ok,true);
+  assert.ok(Date.now()-started<1000,'The command must finish before the upload times out');
+  assert.equal((await stalled).status,400);
+});
+
+test('HTTP fallback supports fifteen private identities, command retries, socket replacement and runtime restart', {timeout:45000}, async t=>{
+  const store=await storePath();let mf=runtime(store);
+  const clients=[],players=Array.from({length:15},(_,i)=>identity('HTTP oyuncu '+i)),leases=[];
+  const code='HTP-TES';
+  t.after(async()=>{clients.forEach(c=>{try{c.close();}catch{}});await mf.dispose();});
+  await post(mf,'/api/rooms',{...players[0],code,settings:{spyCount:2}});
+  for(const p of players.slice(1))await post(mf,'/api/rooms/'+code+'/players',p);
+  async function http(i,action,command,extra={}){
+    return post(mf,'/api/rooms/'+code+'/session',{...players[i],action,generation:leases[i],command,...extra});
+  }
+  for(let i=0;i<15;i++){
+    const response=await http(i,'resume');assert.equal(response.status,200);leases[i]=response.body.generation;
+  }
+  async function send(i,type,payload={}){
+    const view=(await http(i,'sync')).body.snapshot;
+    const cmd={v:2,id:crypto.randomUUID(),type,contextId:view.contextId,turnId:view.game?.question.turnId,ballotId:view.game?.ballot?.id,payload};
+    const result=await http(i,'command',cmd);assert.equal(result.body.ack.ok,true,result.body.ack.error);
+    return {result,cmd};
+  }
+  const started=await send(0,'game:start');
+  assert.equal(started.result.body.snapshot.game.participantIds.length,15);
+  for(let i=0;i<15;i++)await send(i,'game:ready');
+  const views=[];
+  for(let i=0;i<15;i++)views.push((await http(i,'sync')).body.snapshot);
+  const spies=views.filter(s=>s.game.isSpy);assert.equal(spies.length,2);
+  for(const s of spies){assert.equal(s.game.location,null);assert.equal(s.game.spyIds,undefined);}
+  const roundId=views[0].game.id,oldLease=leases[0];
+  leases[0]=(await http(0,'resume')).body.generation;
+  assert.equal((await http(0,'sync',undefined,{generation:oldLease})).status,409);
+  const ws=await session(mf,code,players[1]);clients.push(ws);
+  assert.equal((await http(1,'sync')).status,409);
+  leases[1]=(await http(1,'resume')).body.generation;
+  await ws.wait(m=>m.type==='fatal'&&m.code==='SESSION_REPLACED');
+  ws.close();
+  assert.equal((await http(1,'sync')).body.snapshot.players[1].connected,true);
+  await mf.dispose();mf=runtime(store);
+  const restored=(await http(0,'sync')).body.snapshot;
+  assert.equal(restored.game.id,roundId);assert.equal(restored.state,'PLAYING');
+  const ended=await send(0,'host:abort');
+  const repeated=await http(0,'command',ended.cmd);
+  assert.equal(repeated.body.ack.ok,true);
+  assert.equal(repeated.body.snapshot.roundNumber,0);
+  assert.deepEqual(repeated.body.snapshot.scores,{});
+  assert.equal(repeated.body.snapshot.state,'RESULT');
 });

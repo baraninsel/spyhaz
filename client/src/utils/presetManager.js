@@ -1,5 +1,6 @@
 import { validateSettings, ALL_LOCATION_IDS } from '../../../shared/rules.js';
 import { readStorage, writeStorage } from '../state.js';
+import { newId } from './platform.js';
 const KEY = 'spyhaz_presets';
 const DEFAULTS = [
   { id: '__default_classic', name: 'Klasik · 30 konum, 8 dakika', duration: 480, spyCount: 1, professions: false, enabledLocationIds: ALL_LOCATION_IDS },
@@ -18,7 +19,7 @@ export function getPresets() {
 export function loadPreset(id) { const p = getPresets().find(p => p.id === id); return p ? normalize(p) : null; }
 export function savePreset(name, settings) {
   if (typeof name !== 'string' || !name.trim()) throw new Error('Ayar adı gerekli.');
-  const record = { id: crypto.randomUUID(), name: name.trim().slice(0,20), ...validateSettings(settings) };
+  const record = { id: newId(), name: name.trim().slice(0,20), ...validateSettings(settings) };
   if (!writeStorage(KEY, JSON.stringify([...own(), record]))) throw new Error('Tarayıcı ayarı kaydedemedi. Metni dışa aktarabilirsin.');
   return record;
 }

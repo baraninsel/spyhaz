@@ -10,7 +10,7 @@ for (const name of ['Deneme Ayşe', 'Deneme Can']) {
   const ws = new WebSocket('ws://127.0.0.1:8787/api/rooms/' + code + '/socket');
   const bot = { ws, seen:new Set() }; bots.push(bot);
   ws.onopen = () => ws.send(JSON.stringify({v:2,type:'session:resume',...identity}));
-  const send = (s,type,payload={}) => ws.send(JSON.stringify({v:2,id:crypto.randomUUID(),type,contextId:s.contextId,turnId:s.game?.question.turnId,payload}));
+  const send = (s,type,payload={}) => ws.send(JSON.stringify({v:2,id:crypto.randomUUID(),type,contextId:s.contextId,turnId:s.game?.question.turnId,ballotId:s.game?.ballot?.id,payload}));
   ws.onmessage = event => {
     if (event.data === 'pong') return;
     const s = JSON.parse(event.data);

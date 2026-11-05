@@ -3,12 +3,24 @@ const state = { snapshot: null, players: [], roomCode: null, playerId: null, cha
 export const getState = () => state;
 export const setState = updates => Object.assign(state, updates);
 export function readStorage(key, fallback = null) {
+  try {
+    const override = sessionStorage.getItem('spyhaz_fallback:' + key);
+    if (override !== null) return override;
+  } catch { /* private mode may deny either store independently */ }
   try { return localStorage.getItem(key) ?? sessionStorage.getItem(key) ?? fallback; }
   catch { try { return sessionStorage.getItem(key) ?? fallback; } catch { return fallback; } }
 }
 export function writeStorage(key, value) {
-  try { localStorage.setItem(key, value); return true; }
-  catch { try { sessionStorage.setItem(key, value); return true; } catch { return false; } }
+  const fallbackKey = 'spyhaz_fallback:' + key;
+  try {
+    localStorage.setItem(key, value);
+    try { sessionStorage.removeItem(fallbackKey); }
+    catch { try { sessionStorage.setItem(fallbackKey, value); } catch {} }
+    return true;
+  } catch {
+    try { sessionStorage.setItem(fallbackKey, value); return true; }
+    catch { return false; }
+  }
 }
 function sessions() {
   try { const list = JSON.parse(readStorage(KEY, '[]')); return Array.isArray(list) ? list.filter(s => s && typeof s === 'object' && typeof s.backend === 'string' && typeof s.code === 'string' && typeof s.savedAt === 'number') : []; } catch { return []; }
@@ -19,8 +31,8 @@ export function saveSession(session) {
   const list = sessions().filter(s => !(s.code === saved.code && s.backend === saved.backend));
   return writeStorage(KEY, JSON.stringify([saved, ...list].slice(0, 10)));
 }
-export function loadSession(backend) {
-  return sessions().find(s => s.backend === backend && s.token && s.playerId && s.code && Date.now() - s.savedAt < 86_400_000) || null;
+export function loadSession(backend, code) {
+  return sessions().find(s => s.backend === backend && (!code || s.code === code) && s.token && s.playerId && Date.now() - s.savedAt < 86_400_000) || null;
 }
 export function clearSession(session) {
   if (!session) return;

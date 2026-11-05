@@ -38,13 +38,20 @@ async function readBody(request: Request) {
   if (!reader) throw new Error('İstek verisi gerekli.');
   const chunks: Uint8Array[] = [];
   let size = 0;
-  while (true) {
-    const item = await reader.read();
-    if (item.done) break;
-    size += item.value.byteLength;
-    if (size > FRAME_LIMIT) { await reader.cancel(); throw new Error('İstek çok büyük.'); }
-    chunks.push(item.value);
-  }
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('İstek verisi zamanında alınamadı. Tekrar dene.')), 5000); });
+  try {
+    while (true) {
+      const item = await Promise.race([reader.read(), timeout]);
+      if (item.done) break;
+      size += item.value.byteLength;
+      if (size > FRAME_LIMIT) throw new Error('İstek çok büyük.');
+      chunks.push(item.value);
+    }
+  } catch (error) {
+    void reader.cancel().catch(() => undefined);
+    throw error;
+  } finally { clearTimeout(timer!); }
   const body = new Uint8Array(size);
   let offset = 0;
   for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
@@ -67,7 +74,7 @@ export class SpyhazRoom extends DurableObject<Env> {
         .filter(a => a?.authenticated);
       let dirty = false;
       for (const p of this.room.players) {
-        if (p.connected && !live.some(a => a.playerId === p.id && a.generation === p.generation)) {
+        if (p.connected && !(p.httpUntil > Date.now()) && !live.some(a => a.playerId === p.id && a.generation === p.generation)) {
           dirty = disconnectPlayer(this.room, p.id, p.generation) || dirty;
         }
       }
@@ -102,6 +109,9 @@ export class SpyhazRoom extends DurableObject<Env> {
   }
   private alarmDeadline() {
     let deadline = this.room ? nextDeadline(this.room) : Infinity;
+    for (const p of this.room?.players || []) {
+      if (p.connected && p.httpUntil) deadline = Math.min(deadline, p.httpUntil);
+    }
     for (const ws of this.ctx.getWebSockets()) {
       if (ws.readyState !== WebSocket.OPEN) continue;
       const a = ws.deserializeAttachment() as Attachment;
@@ -139,8 +149,55 @@ export class SpyhazRoom extends DurableObject<Env> {
       this.send(ws, snapshot(this.room, a.playerId));
     }
   }
+  private supersedeSockets(playerId: string, keep?: WebSocket) {
+    for (const old of this.ctx.getWebSockets()) {
+      if (old !== keep && (old.deserializeAttachment() as Attachment)?.playerId === playerId)
+        this.fatal(old, 'SESSION_REPLACED', 'Oyun başka sekmede açıldı. Bu sekmeden devam edebilirsin.', 4009);
+    }
+  }
+
+  private async httpSession(input: any, id: string, tokenHash: string) {
+    if (!this.room) return json({ code:'ROOM_EXPIRED', error:'Oda bulunamadı veya 24 saatlik dönüş süresi doldu.' }, 410);
+    let p = this.room.players.find((p: any) => p.id === id);
+    if (!p || p.withdrawn || !sameHash(p.tokenHash, tokenHash))
+      return json({ code:'INVALID_SESSION', error:'Oturum geçersiz. Odaya yeniden katıl.' }, 401);
+    const now = Date.now();
+    if (input.action !== 'resume' && (!p.httpUntil || input.generation !== p.generation))
+      return json({ code:'SESSION_REPLACED', error:'Oyun başka sekmede açıldı. Bu sekmeden devam edebilirsin.' }, 409);
+    let dirty = tick(this.room, now);
+    if (input.action === 'resume') {
+      connectPlayer(this.room, id, crypto.randomUUID(), now);
+      dirty = true;
+    } else if (!['sync', 'command'].includes(input.action)) return json({ error:'Geçersiz bağlantı işlemi.' }, 400);
+    else if (!p.connected) { connectPlayer(this.room, id, p.generation, now); dirty = true; }
+    // Persist a bounded presence lease, rather than writing every polling read.
+    if (!p.httpUntil || now + 50_000 >= p.httpUntil) { p.httpUntil = now + PRESENCE_MS; dirty = true; }
+    let ack;
+    if (input.action === 'command') {
+      if (!p.httpWindowAt || now - p.httpWindowAt > 5000) { p.httpWindowAt = now; p.httpMessages = 0; }
+      if (++p.httpMessages > 30) return json({ error:'Çok hızlı işlem yapıyorsun. Birkaç saniye bekle.' }, 429);
+      if (input.command?.v !== PROTOCOL_VERSION) return json({ error:'Sürüm uyuşmuyor. Sayfayı yenile.' }, 400);
+      const result = command(this.room, id, input.command, now);
+      this.room = result.room; ack = result.ack;
+      dirty = dirty || (ack.ok && !result.duplicate);
+      p = this.room.players.find((p: any) => p.id === id);
+    }
+    if (dirty) await this.save(); else await this.schedule();
+    if (input.action === 'resume') this.supersedeSockets(id);
+    if (dirty) this.broadcast();
+    return json({ generation:p?.generation, ack, snapshot:p && !p.withdrawn ? snapshot(this.room,id,now) : null });
+  }
 
   async fetch(request: Request): Promise<Response> {
+    // Never hold the room's command queue while a client uploads a body.
+    let input: any, id: string, token: string, tokenHash: string;
+    if (request.method === 'POST') {
+      try {
+        input = await readBody(request);
+        ({ id, token } = credentials(input));
+        tokenHash = await digest(token);
+      } catch (error) { return json({ error: safeError(error) }, 400); }
+    }
     return this.exclusive(async () => {
       try {
         if (this.expired()) await this.expireRoom();
@@ -155,9 +212,7 @@ export class SpyhazRoom extends DurableObject<Env> {
           return new Response(null, { status: 101, webSocket: client });
         }
         if (request.method !== 'POST') return json({ error: 'Bulunamadı.' }, 404);
-        const input = await readBody(request);
-        const { id, token } = credentials(input);
-        const tokenHash = await digest(token);
+        if (path === '/internal/session') return await this.httpSession(input, id, tokenHash);
         if (path === '/internal/create') {
           if (this.room) {
             const p = this.room.players.find((p: any) => p.id === id);
@@ -208,13 +263,11 @@ export class SpyhazRoom extends DurableObject<Env> {
           if (!p || p.withdrawn || !sameHash(p.tokenHash, await digest(token))) return this.fatal(ws, 'INVALID_SESSION', 'Oturum geçersiz. Odaya yeniden katıl.');
           const generation = crypto.randomUUID();
           connectPlayer(this.room, id, generation, now);
+          delete p.httpUntil;
           const auth: Attachment = { ...a, authenticated: true, playerId: id, generation };
           ws.serializeAttachment(auth);
           await this.save();
-          for (const old of this.ctx.getWebSockets()) {
-            const oldAuth = old.deserializeAttachment() as Attachment;
-            if (old !== ws && oldAuth?.playerId === id) this.fatal(old, 'SESSION_REPLACED', 'Oyun başka sekmede açıldı. Bu sekmeden devam edebilirsin.', 4009);
-          }
+          this.supersedeSockets(id, ws);
           this.broadcast();
           return;
         }
@@ -253,6 +306,9 @@ export class SpyhazRoom extends DurableObject<Env> {
   async alarm() {
     await this.exclusive(async () => {
       const now = Date.now();
+      for (const p of this.room?.players || []) {
+        if (p.connected && p.httpUntil && p.httpUntil <= now) disconnectPlayer(this.room, p.id, p.generation, now);
+      }
       for (const ws of this.ctx.getWebSockets()) {
         const a = ws.deserializeAttachment() as Attachment;
         if (!a) continue;
@@ -296,11 +352,11 @@ export default {
         const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
         response = await stub.fetch('https://room/internal/create', { method: 'POST', body: JSON.stringify(input) });
       } else {
-        const match = /^\/api\/rooms\/([^/]+)\/(players|socket)$/.exec(url.pathname);
+        const match = /^\/api\/rooms\/([^/]+)\/(players|socket|session)$/.exec(url.pathname);
         if (!match) return json({ error: 'Bulunamadı.' }, 404, cors);
         const code = normalizeCode(decodeURIComponent(match[1]));
         const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
-        response = await stub.fetch(new Request('https://room/internal/' + (match[2] === 'players' ? 'join' : 'socket'), request));
+        response = await stub.fetch(new Request('https://room/internal/' + (match[2] === 'players' ? 'join' : match[2]), request));
       }
       if (response.status === 101) return response;
       const result = new Response(response.body, response);
