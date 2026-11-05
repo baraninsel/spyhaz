@@ -23,6 +23,7 @@
 - 48 motor/istemci testi; bunların 5'i gerçek üretim JavaScript paketini DOM ortamında çalıştırır.
 - 5 gerçek workerd/SQLite entegrasyon testi: 15 oyuncu, HTTP ve WebSocket kimlikleri, yeniden başlatma, eski bağlantı, yavaş gövde ve komut tekrarları.
 - TypeScript ve üretim derlemesi geçer.
+- Canlı Worker'da 15 WebSocket ve 15 HTTP oyuncusuyla ayrı testler; ana Vercel adresinde de 15 oyuncuyla yalnızca HTTP kullanarak giriş, gizli kartlar, soru/tur dönüşü, sonuç ve tekrar komut denemeleri geçti. Test üyelikleri çıkarıldı.
 - Bu çalışma sırasında Work yerel tarayıcı erişimi kapalı olduğu için görsel tarayıcı/gerçek telefon denemesi yapılamadı. DOM testleri ekran görünümünün veya mobil işletim sistemi davranışının kanıtı değildir.
 - Sayfanın hiç açılmadığı DNS/operatör/tarayıcı hatası, arkadaşların gördüğü tam hata olmadan doğrulanmadı. Uygulama giriş hataları ile bu durum ayrı değerlendirilmelidir.
 - WebSocket yerine HTTP kullanılırsa diğer oyuncuların işlemleri en fazla yaklaşık 5 saniyelik sorgulama gecikmesiyle görünür. Süre yerelde akmaya devam eder.

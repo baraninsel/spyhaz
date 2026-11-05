@@ -1,4 +1,13 @@
-# Uygulama doğrulaması — 25 Ekim 2026
+# Güncel arayüz ve bağlantı doğrulaması
+
+- İlk sürümün tema ve ekran sınıfları geri getirildi; güncel inceleme [RESTORATION-REVIEW.md](RESTORATION-REVIEW.md) içinde.
+- 48 istemci/motor ve 5 gerçek workerd/SQLite testi geçti; TypeScript, üretim derlemesi ve npm audit başarılı.
+- Canlı Worker'da 15 WebSocket oyuncusu ve ayrı odada 15 HTTP oyuncusu; canlı `https://spyhaz.vercel.app` üzerinden de 15 HTTP oyuncusu ile giriş, kart gizliliği, aynı soru/tura dönüş, sonuç kurtarma ve tekrar komut koruması geçti. Test üyelikleri çıkarıldı.
+- Ana Vercel adresi ve alternatif Worker giriş adresi HTTP 200 döndürüyor. Ana sitenin `/api` yönlendirmesi canlı 15 kişilik HTTP testinde kullanıldı.
+- Cloudflare sürümü `cac3db6d-e4c4-478d-b57e-90a1cf1d57ef`; Vercel üretim yayını `GUpuCgaWcy3TTe2DTfACYLvQ3ob8`.
+- Bu güncellemede Work yerel tarayıcı erişimi kapalıydı. Görsel ve fiziksel telefon kabul denemesi tamamlanmadı. Aşağıdaki masaüstü gözlemleri önceki sürümün tarihli kaydıdır.
+
+# Önceki uygulama doğrulaması — 25 Ekim 2026
 
 Yerel kaynak dalı: codex/reliable-multiplayer
 Kaynak başlangıcı: baraninsel/spyhaz @ 8ae86d620553021a2ca0438f02d50a61e3bd2884
