@@ -406,3 +406,14 @@ test('spectator host receives only a public result and can return everyone to th
   h.send(watcher,'game:lobby');
   assert.equal(snapshot(h.room,watcher).state,'LOBBY');
 });
+
+test('a newly joined player gets a bounded connection grace before a round can start',()=>{
+  const h=setup(3),guest={id:crypto.randomUUID(),name:'Bağlanan oyuncu',tokenHash:'test'};
+  joinRoom(h.room,guest,h.now);
+  assert.equal(snapshot(h.room,h.room.hostId,h.now).players.find(p=>p.id===guest.id).connectingUntil,h.now+30_000);
+  assert.equal(h.raw(h.room.hostId,'game:start').ack.ok,false);
+  connectPlayer(h.room,guest.id,'ready-socket',h.now+2000);
+  h.send(h.room.hostId,'game:start');assert.equal(h.room.game.participantIds.includes(guest.id),true);
+  const expired=setup(3);joinRoom(expired.room,{...guest,name:'Zaman aşımı'},expired.now);expired.now+=30_001;
+  expired.send(expired.room.hostId,'game:start');assert.equal(expired.room.game.participantIds.length,3);
+});

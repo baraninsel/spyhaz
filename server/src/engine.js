@@ -73,6 +73,8 @@ function start(room, now) {
   assert(!room.game, 'Önce mevcut tur tamamlanmalı.');
   const players = active(room);
   assert(players.length >= 3 && players.length <= MAX_PLAYERS, '3–15 bağlı oyuncu gerekli.');
+  const joining = room.players.filter(p => !p.withdrawn && !p.connected && !p.generation && now < p.joinedAt + 30_000);
+  assert(!joining.length, joining.length + ' yeni oyuncunun bağlantısı hazırlanıyor. Birkaç saniye bekle veya lobiden çıkar.');
   assert(room.settings.spyCount === 1 || players.length >= 7, 'İki casus için en az 7 bağlı oyuncu gerekli.');
   const locationId = sample(room.settings.enabledLocationIds);
   const spyIds = shuffle(players.map(p => p.id)).slice(0, room.settings.spyCount);
@@ -430,7 +432,7 @@ export function snapshot(room, playerId, now = Date.now()) {
     type: 'snapshot', v: 2, code: room.code, instanceId: room.instanceId,
     contextId: contextId(room), revision: room.revision, serverNow: now,
     playerId, hostId: room.hostId, settings: { ...room.settings },
-    players: room.players.map(p => ({ id: p.id, name: p.name, connected: p.connected && !p.withdrawn, isHost: p.id === room.hostId })),
+    players: room.players.map(p => ({ id: p.id, name: p.name, connected: p.connected && !p.withdrawn, isHost: p.id === room.hostId, connectingUntil: !p.withdrawn && !p.connected && !p.generation ? p.joinedAt + 30_000 : null })),
     chat: room.chat, scores: room.scores, roundNumber: room.roundNumber, notice: room.notice,
     state: g?.state || 'LOBBY', game: null, summaries: g?.state === 'RESULT' ? room.summaries : undefined,
     publicResult: g?.state === 'RESULT' ? g.result : undefined,

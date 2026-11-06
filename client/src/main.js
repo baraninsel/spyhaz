@@ -19,13 +19,19 @@ import { renderChat, renderChatMessages } from './components/chat.js';
 import { initNotebookToggle, clearNotebookState } from './components/notebook.js';
 import { renderKickChat } from './components/kickChat.js';
 import { saveGameToHistory, getHistory, getStats } from './utils/history.js';
-import { getPresets, savePreset, loadPreset, importPresetFromText, exportPresetText } from './utils/presetManager.js';
+import { getPresets } from './utils/presetManager.js';
+import { openPresets } from './components/presets.js';
 import { playSFX, toggleMute, getMuteState } from './utils/audio.js';
 import { recommendedDuration, normalizeCode } from '../../shared/rules.js';
 
 const app = document.getElementById('app');
 const ui = { roleVisible: false, showCode: false, roundId: null };
+const compactQuery = window.matchMedia?.('(max-width: 768px)');
+ui.compact = compactQuery?.matches || false;
+ui.rosterOpen = !ui.compact;
 let lastSignature = '', modalContext = '', clockOffset = 0, tickSecond = null;
+let settingsQueue = Promise.resolve(), settingsPending = 0, lastPhase = '', lastChatKey = '', lobbyLayout = '', gameLayout = '';
+const pendingActions = new Set();
 const timeText = seconds => Math.floor(Math.max(0, seconds) / 60) + ':' + String(Math.max(0, seconds) % 60).padStart(2, '0');
 
 const statusBar = document.createElement('div');
@@ -40,26 +46,83 @@ function paintConnection(error = '') {
     statusBar.innerHTML = '<span>' + e(error || labels[status] || 'Bağlantı bekleniyor…') + '</span>' + (status !== 'ended' ? '<button class="btn btn-ghost" data-retry>' + (status === 'replaced' ? 'Bu sekmede devam et' : 'Tekrar dene') + '</button>' : '');
   }
   app.querySelectorAll('[data-server-action]').forEach(button => {
-    button.disabled = status !== 'ready' || button.dataset.blocked === 'true';
+    button.disabled = status !== 'ready' || button.dataset.blocked === 'true' || pendingActions.has(button.dataset.action) || (settingsPending > 0 && (button.matches('[data-setting]') || button.dataset.action === 'start'));
   });
+  app.querySelector('.lobby-settings')?.setAttribute('aria-busy', String(settingsPending > 0));
+  const settingsStatus = document.getElementById('settings-status');
+  if (settingsStatus) settingsStatus.textContent = settingsPending ? 'Ayarlar kaydediliyor…' : status === 'ready' ? 'Ayarlar tüm oyunculara uygulandı.' : 'Bağlantı bekleniyor; ayarlar korunuyor.';
 }
 async function perform(type, payload = {}, element) {
+  const key = element?.dataset.action;
+  if (key && pendingActions.has(key)) return null;
+  if (key) pendingActions.add(key);
   if (element) element.disabled = true;
   try { return await sendCommand(type, payload); }
   catch (error) { showToast(error.message, 'error'); return null; }
-  finally { paintConnection(); }
+  finally { if (key) pendingActions.delete(key); paintConnection(); }
+}
+function updateSettings(patch) {
+  const intended = getState().snapshot;
+  settingsPending++; paintConnection();
+  const task = settingsQueue.catch(() => {}).then(() => {
+    const current = getState().snapshot;
+    if (!intended || current?.code !== intended.code || current.contextId !== intended.contextId || current.state !== 'LOBBY')
+      throw new Error('Oda veya tur değişti. Ayarı güncel lobide tekrar seç.');
+    return sendCommand('room:settings', patch);
+  }).finally(() => { settingsPending--; paintConnection(); });
+  settingsQueue = task;
+  return task;
+}
+function presetLabel(settings) {
+  const ids = [...settings.enabledLocationIds].sort((a,b) => a-b).join(',');
+  return getPresets().find(p => p.duration === settings.duration && p.spyCount === settings.spyCount && p.professions === settings.professions &&
+    [...p.enabledLocationIds].sort((a,b) => a-b).join(',') === ids)?.name || 'Özel ayarlar';
 }
 function renderHome() { app.innerHTML = homeView(loadSession(backend), getStats()); }
 function renderLobby(s) {
+  ui.now = Date.now() + clockOffset;
+  ui.presetLabel = presetLabel(s.settings);
+  lobbyLayout = JSON.stringify([s.settings,s.hostId,s.contextId,ui.showCode,ui.compact]);
   app.innerHTML = lobbyView(s, ui);
   renderChat(document.getElementById('room-chat'));
 }
+function patchLobby(s) {
+  const layout = JSON.stringify([s.settings,s.hostId,s.contextId,ui.showCode,ui.compact]);
+  if (layout !== lobbyLayout || !app.querySelector('.lobby-screen')) return false;
+  ui.now = Date.now() + clockOffset;
+  const template = document.createElement('template'); template.innerHTML = lobbyView(s, ui);
+  for (const selector of ['.lobby-players','.lobby-actions-card','.recovery-tools']) {
+    const old = app.querySelector(selector), fresh = template.content.querySelector(selector);
+    if (!old || !fresh) continue;
+    if (old.tagName === 'DETAILS') fresh.open = old.open;
+    const selected = old.querySelector('#host-player')?.value;
+    if (selected && fresh.querySelector('#host-player option[value="' + selected + '"]')) fresh.querySelector('#host-player').value = selected;
+    old.replaceWith(fresh);
+  }
+  const oldNotice = app.querySelector('.recovery-notice'), freshNotice = template.content.querySelector('.recovery-notice');
+  if (oldNotice) { if (freshNotice) oldNotice.replaceWith(freshNotice); else oldNotice.remove(); }
+  else if (freshNotice) app.querySelector('.lobby-header').after(freshNotice);
+  const oldHint = app.querySelector('.lobby-settings > .recovery-hint'), freshHint = template.content.querySelector('.lobby-settings > .recovery-hint');
+  if (oldHint) { if (freshHint) oldHint.replaceWith(freshHint); else oldHint.remove(); }
+  else if (freshHint) app.querySelector('.lobby-settings').append(freshHint);
+  return true;
+}
 function renderGame(s) {
+  gameLayout = JSON.stringify([s.game.id,ui.roleVisible,ui.compact,getState().kickChatVisible,s.hostId]);
   app.innerHTML = gameView(s, ui, eliminationSet(s), getState().kickChatVisible);
   renderChat(document.getElementById('room-chat'));
   initNotebookToggle(document.getElementById('notebook-drawer'));
   const kickArea = document.getElementById('kick-chat-area');
   if (kickArea) renderKickChat(kickArea);
+}
+function patchReady(s) {
+  if (s.state !== 'ROLE_REVEAL' || app.dataset.phase !== s.state || !app.querySelector('.game-screen') || gameLayout !== JSON.stringify([s.game.id,ui.roleVisible,ui.compact,getState().kickChatVisible,s.hostId])) return false;
+  const template = document.createElement('template'); template.innerHTML = gameView(s, ui, eliminationSet(s), getState().kickChatVisible);
+  for (const selector of ['.question-section','.game-players-card']) {
+    const old = app.querySelector(selector), fresh = template.content.querySelector(selector);
+    if (old && fresh) { if (old.tagName === 'DETAILS') fresh.open = old.open; old.replaceWith(fresh); }
+  }
+  return true;
 }
 function renderResult(s) { app.innerHTML = resultView(s); }
 function renderWatcher(s) {
@@ -80,10 +143,14 @@ function refreshChat(s) {
   const body = document.getElementById('chat-body');
   if (!body) return;
   const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 60;
-  renderChatMessages(body, s.chat);
+  const key = s.chat.length + ':' + (s.chat[s.chat.length - 1]?.id || '');
+  if (key === lastChatKey && body.dataset.messages === key) return;
+  renderChatMessages(body, s.chat); lastChatKey = key; body.dataset.messages = key;
   if (nearBottom) body.scrollTop = body.scrollHeight;
 }
 function renderSnapshot(s) {
+  const phase = s.contextId + ':' + s.state;
+  const phaseChanged = lastPhase !== phase;
   const signature = structuralSignature(s);
   const nextModalContext = s.contextId + ':' + s.state + ':' + s.game?.question.turnId;
   if (modalContext && modalContext !== nextModalContext) closeModal();
@@ -99,31 +166,45 @@ function renderSnapshot(s) {
       clearNotebookState();
     }
     if (s.state === 'RESULT') renderResult(s);
-    else if (s.state === 'LOBBY') renderLobby(s);
+    else if (s.state === 'LOBBY') { if (!patchLobby(s)) renderLobby(s); }
     else if (!s.game) renderWatcher(s);
-    else renderGame(s);
+    else if (!patchReady(s)) renderGame(s);
     const input = document.getElementById('chat-input');
     if (input) input.value = chatDraft;
     if (notebookExpanded) document.getElementById('notebook-tab')?.click();
     if (focused) {
       const element = document.getElementById(focused);
       element?.focus();
-      if (typeof selection === 'number') element?.setSelectionRange?.(selection, selection);
+      if (typeof selection === 'number' && /^(text|search|url|tel|password)$/.test(element?.type || '')) element.setSelectionRange(selection, selection);
     }
     lastSignature = signature;
   }
+  if (phaseChanged) {
+    lastPhase = phase;
+    if (typeof window.scrollTo === 'function') window.scrollTo({ top:0, left:0, behavior:'auto' });
+  }
+  app.dataset.phase = s.state;
   refreshChat(s); updateClocks(); paintConnection();
 }
 function updateClocks() {
+  if (document.hidden) return;
   const s = getState().snapshot;
   const now = Date.now() + clockOffset;
-  document.querySelectorAll('[data-unlock-at]').forEach(button => { button.dataset.blocked = String(now < Number(button.dataset.unlockAt)); button.disabled = connectionStatus() !== 'ready' || button.dataset.blocked === 'true'; });
+  document.querySelectorAll('[data-unlock-at]').forEach(button => {
+    button.dataset.blocked = String(now < Number(button.dataset.unlockAt) || button.dataset.baseBlocked === 'true');
+    button.disabled = connectionStatus() !== 'ready' || button.dataset.blocked === 'true' || pendingActions.has(button.dataset.action) || (button.dataset.action === 'start' && settingsPending > 0);
+  });
+  const joiningHint = document.querySelector('#start-hint[data-connecting-until]');
+  if (joiningHint && now >= Number(joiningHint.dataset.connectingUntil)) {
+    joiningHint.textContent = 'Bağlantısı tamamlanmayan oyuncular bu tur kart alamaz. Onları bekleyebilir veya lobiden çıkarabilirsin.';
+    delete joiningHint.dataset.connectingUntil;
+  }
   if (!s?.game) return;
   const g = s.game;
   const remaining = Math.ceil((g.timer.deadline === null ? g.timer.remainingMs : Math.max(0, g.timer.deadline - now)) / 1000);
   const main = document.getElementById('main-clock');
-  if (main) main.textContent = timeText(remaining);
-  document.querySelectorAll('.phase-clock').forEach(el => { el.textContent = 'Kalan: ' + Math.ceil(Math.max(0, (g.phaseDeadline || now) - now) / 1000) + ' sn'; });
+  if (main && main.textContent !== timeText(remaining)) main.textContent = timeText(remaining);
+  document.querySelectorAll('.phase-clock').forEach(el => { const text = 'Kalan: ' + Math.ceil(Math.max(0, (g.phaseDeadline || now) - now) / 1000) + ' sn'; if (el.textContent !== text) el.textContent = text; });
   if (g.state === 'PLAYING' && g.timer.deadline && remaining > 0 && remaining <= 10 && tickSecond !== remaining) playSFX.tick();
   tickSecond = remaining;
 }
@@ -158,8 +239,10 @@ function settingsDialog(s) {
     overlay.querySelector('#settings-form').onsubmit = async event => {
       event.preventDefault();
       if (!event.currentTarget.reportValidity()) return;
-      const result = await perform('room:settings', { duration: Number(overlay.querySelector('#duration').value) * 60, spyCount: Number(overlay.querySelector('#spy-count').value), professions: overlay.querySelector('#professions').checked });
-      if (result) closeModal();
+      const button = event.currentTarget.querySelector('button[type=submit]'); button.disabled = true;
+      try { await updateSettings({ duration: Number(overlay.querySelector('#duration').value) * 60, spyCount: Number(overlay.querySelector('#spy-count').value), professions: overlay.querySelector('#professions').checked }); closeModal(); }
+      catch (error) { showToast(error.message, 'error'); }
+      finally { button.disabled = false; }
     };
   } });
 }
@@ -179,18 +262,8 @@ function guessDialog(s) {
       };
     } });
 }
-function presetsDialog(s) {
-  const presets = getPresets();
-  showModal('HAZIR AYARLAR', '<label class="input-label" for="preset-list">Kayıtlı ayar seç</label><select class="input" id="preset-list">' + presets.map(p => '<option value="' + e(p.id) + '">' + e(p.name) + '</option>').join('') +
-    '<button class="btn btn-primary" id="preset-apply">Seçili ayarı uygula</button><hr><label class="input-label" for="preset-name">Bu ayarları kaydet</label><input class="input" id="preset-name" maxlength="20" placeholder="Örn. Sınıf oyunu"><button class="btn btn-ghost" id="preset-save">Kaydet</button><hr><label class="input-label" for="preset-text">Ayarı dışa aktar / içe aktar</label><textarea class="input" id="preset-text" rows="5">' + e(exportPresetText(s.settings)) + '</textarea><button class="btn btn-primary" id="preset-import">Metindeki ayarı uygula</button><p class="recovery-hint">Eski ayarlardaki çoklu tahmin hakkı kaldırıldı. En az 10 farklı geçerli konum gerekir.</p>', { onMount(overlay) {
-      overlay.querySelector('#preset-apply').onclick = async () => { const setting = loadPreset(overlay.querySelector('#preset-list').value); if (setting && await perform('room:settings', setting)) closeModal(); };
-      overlay.querySelector('#preset-save').onclick = () => { try { savePreset(overlay.querySelector('#preset-name').value, s.settings); showToast('Ayar kaydedildi.'); closeModal(); } catch (error) { showToast(error.message, 'error'); } };
-      overlay.querySelector('#preset-import').onclick = async () => {
-        const value = importPresetFromText(overlay.querySelector('#preset-text').value);
-        if (value.error) return showToast(value.error, 'error');
-        if (await perform('room:settings', value)) closeModal();
-      };
-    } });
+function presetsDialog() {
+  openPresets({ getSettings: () => getState().snapshot.settings, applySettings: updateSettings });
 }
 function historyDialog() {
   showModal('OYUN GEÇMİŞİM', getHistory().map(g => '<div class="history-item"><strong>' + e(g.location?.emoji || '📍') + ' ' + e(g.location?.name || '?') + '</strong><span>' + e(g.isSpy ? 'Casus' : 'Oyuncu') + ' · ' + e(reasonText[g.reason] || g.reason || '') + '</span></div>').join('') || '<p>Oynadığın turlar bu tarayıcıda görünecek.</p>');
@@ -216,7 +289,7 @@ app.addEventListener('click', async event => {
     return;
   }
   if (a === 'settings') return settingsDialog(s);
-  if (a === 'locations') return openLocationManager(s.settings.enabledLocationIds, ids => sendCommand('room:settings', { enabledLocationIds: ids }));
+  if (a === 'locations') return openLocationManager(s.settings.enabledLocationIds, ids => updateSettings({ enabledLocationIds: ids }));
   if (a === 'presets') return presetsDialog(s);
   if (a === 'role') { ui.roleVisible = !ui.roleVisible; lastSignature = ''; return renderSnapshot(s); }
   if (a === 'accuse') return selectPlayer(s);
@@ -232,7 +305,7 @@ app.addEventListener('click', async event => {
     button.classList.toggle('eliminated', set.has(id)); button.setAttribute('aria-pressed', String(set.has(id))); return;
   }
   if (a === 'abort') return showModal('TURU İPTAL ET', '<p>Bu tur sonuçlandırılmadan kapanır. Kimseye puan yazılmaz.</p><button class="btn btn-danger" id="confirm-abort">Turu puansız iptal et</button>', { onMount(overlay) { overlay.querySelector('#confirm-abort').onclick = async event => { if (await perform('host:abort', {}, event.target)) closeModal(); }; } });
-  if (a === 'ready') ui.roleVisible = false;
+  if (a === 'ready') { ui.roleVisible = false; lastSignature = ''; renderSnapshot(s); }
   const target = document.getElementById('host-player')?.value;
   const commands = {
     start: ['game:start'], ready: ['game:ready'], forceReady: ['host:forceReady'],
@@ -258,12 +331,23 @@ app.addEventListener('change', async event => {
   };
   if (!changes[input.id]) return;
   input.disabled = true;
-  await perform('room:settings', changes[input.id]);
+  try { await updateSettings(changes[input.id]); }
+  catch (error) { showToast(error.message, 'error'); }
   lastSignature = '';
   const snapshot = getState().snapshot;
   if (snapshot) renderSnapshot(snapshot);
 });
 window.addEventListener('spyhaz:connection', event => paintConnection(event.detail.error));
+app.addEventListener('toggle', event => {
+  if (event.target.id === 'room-roster') ui.rosterOpen = event.target.open;
+}, true);
+compactQuery?.addEventListener?.('change', event => {
+  ui.compact = event.matches; ui.rosterOpen = !event.matches; lastSignature = '';
+  const s = getState().snapshot; if (s) renderSnapshot(s);
+});
+function viewportHeight() { document.documentElement.style.setProperty('--viewport-height', Math.round(window.visualViewport?.height || window.innerHeight) + 'px'); }
+window.visualViewport?.addEventListener('resize', viewportHeight);
+window.addEventListener('resize', viewportHeight); viewportHeight();
 window.addEventListener('spyhaz:sessionEnded', event => {
   setState({ snapshot: null, players: [], roomCode: null }); lastSignature = ''; closeModal(); renderHome(); showToast(event.detail, 'warning');
 });
@@ -284,7 +368,7 @@ const mute = document.getElementById('mute-toggle');
 mute.setAttribute('aria-label', 'Ses efektlerini aç veya kapat'); mute.textContent = getMuteState() ? '🔇' : '🔊';
 mute.onclick = () => { const muted = toggleMute(); mute.textContent = muted ? '🔇' : '🔊'; mute.setAttribute('aria-pressed', String(muted)); };
 renderHome();
-setInterval(updateClocks, 250);
+setInterval(updateClocks, 1000);
 const invite = new URLSearchParams(window.location.search).get('code');
 if (invite) {
   let code;

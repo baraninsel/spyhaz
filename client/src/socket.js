@@ -9,12 +9,17 @@ let stopped = false, replaced = false, status = 'idle';
 let entryDraft = null;
 let httpMode = false, httpGeneration = null, httpTimer = null, httpBusy = null, epoch = 0;
 const pending = new Map();
+function settle(item, error, ack = item.ack) {
+  clearTimeout(item.timer); clearTimeout(item.fallbackTimer);
+  pending.delete(item.data.id);
+  if (error) item.reject(error); else item.resolve(ack);
+}
 const announce = (next, error = '') => { status = next; window.dispatchEvent(new CustomEvent('spyhaz:connection', { detail: { status: next, error } })); };
 export const connectionStatus = () => status;
 export const currentSession = () => session;
 const stopTimers = () => { clearTimeout(retryTimer); clearTimeout(pongTimer); clearTimeout(welcomeTimer); clearTimeout(httpTimer); clearInterval(heartbeat); };
 function failPending(message) {
-  for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error(message)); }
+  for (const item of [...pending.values()]) settle(item, new Error(message));
   pending.clear();
 }
 function scheduleRetry() {
@@ -31,6 +36,16 @@ function acceptSnapshot(message) {
   applySnapshot(message); saveSession(session); attempts = 0;
   announce('ready');
   window.dispatchEvent(new CustomEvent('spyhaz:snapshot', { detail: message }));
+  for (const item of [...pending.values()]) {
+    if (item.epoch === epoch && item.ack?.ok && message.revision >= item.ack.revision) settle(item);
+  }
+}
+function acceptAck(ack) {
+  const item = pending.get(ack.id);
+  if (!item || item.epoch !== epoch) return;
+  if (!ack.ok) { settle(item, new Error(ack.error || 'İşlem reddedildi.')); return; }
+  item.ack = ack;
+  if (item.data.type === 'room:leave' || (getState().snapshot?.revision ?? -1) >= ack.revision) settle(item);
 }
 function fatal(message) {
   if (message.code === 'SESSION_REPLACED') { replaced = true; announce('replaced', message.error); }
@@ -67,13 +82,39 @@ async function pollHTTP() {
     const result = await httpRequest(httpGeneration ? 'sync' : 'resume', {}, requestEpoch);
     httpGeneration = result.generation;
     if (result.snapshot) acceptSnapshot(result.snapshot);
+    flushHTTPCommands();
   } catch (error) {
     if (requestEpoch === epoch && !stopped && !replaced) scheduleRetry();
   } finally {
     if (httpBusy === requestEpoch) httpBusy = null;
     if (requestEpoch === epoch && status === 'ready' && !document.hidden && !stopped && !replaced)
-      httpTimer = setTimeout(pollHTTP, 5000);
+      httpTimer = setTimeout(pollHTTP, getState().snapshot?.state === 'ROLE_REVEAL' ? 2000 : 5000);
   }
+}
+async function deliverHTTP(item) {
+  if (item.delivering || item.epoch !== epoch || !httpGeneration) return;
+  item.delivering = true;
+  try {
+    let result;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try { result = await httpRequest('command', { command:item.data }, item.epoch); break; }
+      catch (error) {
+        if (attempt || item.epoch !== epoch || stopped || replaced) throw error;
+        const current = await httpRequest('sync', {}, item.epoch);
+        if (current.snapshot) acceptSnapshot(current.snapshot);
+        if (!pending.has(item.data.id)) return;
+      }
+    }
+    if (!pending.has(item.data.id) || item.epoch !== epoch) return;
+    if (result.snapshot) acceptSnapshot(result.snapshot);
+    acceptAck(result.ack);
+  } catch (error) {
+    if (pending.has(item.data.id)) settle(item, error);
+    if (item.epoch === epoch && !stopped && !replaced) scheduleRetry();
+  }
+}
+function flushHTTPCommands() {
+  for (const item of pending.values()) if (item.epoch === epoch) void deliverHTTP(item);
 }
 function startHTTP() {
   if (stopped || replaced || !session) return;
@@ -122,10 +163,7 @@ function open() {
         ws.send('ping');
       }
     } else if (message.type === 'ack') {
-      const item = pending.get(message.id);
-      if (!item) return;
-      clearTimeout(item.timer); pending.delete(message.id);
-      if (message.ok) item.resolve(message); else item.reject(new Error(message.error || 'İşlem reddedildi.'));
+      acceptAck(message);
     } else if (message.type === 'fatal') {
       fatal(message);
     } else if (message.type === 'error') showToast(message.error, 'error');
@@ -134,7 +172,6 @@ function open() {
     if (socket !== ws) return;
     socket = null;
     stopTimers();
-    failPending('Bağlantı kesildi. Güncel ekran yüklendiğinde tekrar deneyebilirsin.');
     if (!stopped && !replaced) startHTTP();
   };
   ws.onerror = () => { if (socket === ws) ws.close(); };
@@ -142,6 +179,9 @@ function open() {
 export function connectSession(value, force = false) {
   if (!value) return;
   if (!force && session?.code === value.code && session?.playerId === value.playerId && status === 'ready') return;
+  const old = socket; socket = null; stopTimers();
+  failPending('Bağlantı yenilendi. Güncel ekranı bekle.');
+  if (old) old.close();
   epoch++; httpMode = false; httpGeneration = null;
   session = { ...value, backend };
   saveSession(session);
@@ -177,21 +217,19 @@ export function sendCommand(type, payload = {}, commandId = newId()) {
   const snapshot = getState().snapshot;
   if (status !== 'ready' || (!httpMode && socket?.readyState !== WebSocket.OPEN) || !snapshot) return Promise.reject(new Error('Önce bağlantının geri gelmesini bekle.'));
   const data = { v: 2, id: commandId, type, contextId: snapshot.contextId, turnId: snapshot.game?.question.turnId || snapshot.hostControls?.turnId, ballotId: snapshot.game?.ballot?.id, payload };
-  const requestEpoch = epoch;
-  if (httpMode) return httpRequest(type === 'session:sync' ? 'sync' : 'command', { command:data }).catch(error => {
-    if (requestEpoch === epoch && !stopped && !replaced) scheduleRetry();
-    throw error;
-  }).then(result => {
-    if (result.snapshot) acceptSnapshot(result.snapshot);
-    if (result.ack && !result.ack.ok) throw new Error(result.ack.error);
-    return result.ack || { ok:true };
-  });
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { pending.delete(commandId); reject(new Error('Yanıt gecikti. Güncel ekranı kontrol ederek tekrar deneyebilirsin.')); }, 10_000);
-    pending.set(commandId, { resolve, reject, timer });
-    socket.send(JSON.stringify(data));
+    const item = { data, epoch, resolve, reject, ack:null, delivering:false, timer:null, fallbackTimer:null };
+    item.timer = setTimeout(() => { if (pending.has(commandId)) settle(item, new Error('Sunucudan güncel durum alınamadı. Bağlantı düzelince tekrar deneyebilirsin.')); }, 45_000);
+    pending.set(commandId, item);
+    if (httpMode) void deliverHTTP(item);
+    else {
+      item.fallbackTimer = setTimeout(() => { if (pending.has(commandId) && item.epoch === epoch) startHTTP(); }, 6000);
+      try { socket.send(JSON.stringify(data)); }
+      catch { startHTTP(); }
+    }
   });
 }
+
 // Compatibility for the retained local chat component.
 export const getSocket = () => ({ emit(type, payload) { return sendCommand(type, payload).catch(error => showToast(error.message, 'error')); } });
 export async function enterRoom(mode, name, code, settings = {}) {

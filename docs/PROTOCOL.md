@@ -10,7 +10,7 @@ POST /api/rooms/:code/session: {playerId, token, action, generation?, command?}
 
 WebSocket engellendiğinde HTTP yedeği kullanılır. `action:resume` yeni generation ve kişiye özel snapshot döndürür. `sync` aynı generation ile güncel snapshot alır. `command` aynı komutu WebSocket ile aynı motor, doğrulama, kalıcı makbuz ve puan işleminden geçirir; yanıt `{generation, ack, snapshot}` olur. Eski generation 409/SESSION_REPLACED ile reddedilir. Token her isteğin JSON gövdesindedir; URL'de bulunmaz.
 
-Üretimde giriş ve HTTP yedeği aynı site üzerindeki `/api` yolunu kullanır; Vercel bu HTTP isteklerini Worker'a aktarır. WebSocket doğrudan Worker'a gider. 3,5 saniyede açılamazsa veya koparsa HTTP denenir. Görünür sayfa 5 saniyede bir durum ister; arka planda düzenli sorgulama durur. 75 saniyelik oyuncu varlık süresi kalıcı saklanır ve en geç 25 saniyede bir uzatılır. Her sorgu için kayıt yazılmaz.
+Üretimde giriş ve HTTP yedeği aynı site üzerindeki `/api` yolunu kullanır; Vercel bu HTTP isteklerini Worker'a aktarır. WebSocket doğrudan Worker'a gider. 3,5 saniyede açılamazsa veya koparsa HTTP denenir. Görünür sayfa hazır aşamasında 2, diğer aşamalarda 5 saniyede bir durum ister; arka planda düzenli sorgulama durur. 75 saniyelik oyuncu varlık süresi kalıcı saklanır ve en geç 25 saniyede bir uzatılır. Her sorgu için kayıt yazılmaz.
 
 Kimlik tarayıcıda CSPRNG ile oluşturulur: UUID oyuncu kimliği ve 32 rastgele bayttan base64url token. Sunucu yalnızca SHA-256 token özetini saklar. Kod 6 karakterdir; biçimi ABC-DEF. Kimlikler URL'ye veya loglara yazılmaz.
 
@@ -81,3 +81,5 @@ Her başarılı bağlantı yeni generation üretir. Eski generation'ın kapanmas
 8 KiB HTTP/mesaj sınırı, oda başına 15 üye/45 soket sınırı ve soket başına 5 saniyede 30 mesaj sınırı uygulanır. Yetkiler her komutta sunucuda doğrulanır.
 
 HTTP gövdesi en fazla 5 saniyede okunur ve oda işlem sırası alınmadan önce tamamlanır. Yavaş bir katılma isteği oyun komutlarını bekletemez. HTTP oyun komutlarında da oyuncu başına 5 saniyede 30 sınırı uygulanır.
+
+İstemci başarılı onayı, en az o revizyonun snapshot'ı gelene kadar tamamlanmış saymaz. WebSocket komutunun onayı/verisi 6 saniyede gelmezse HTTP yedeği aynı işlem kimliğiyle devam eder. HTTP yanıtı kaybolursa bir senkronizasyondan sonra aynı komut en fazla bir kez tekrar gönderilir; toplam bekleme 45 saniyeyle sınırlıdır. Yeni oyuncunun ilk bağlantısı tamamlanmadan tur dışında kalmasını önlemek için en fazla 30 saniyelik başlangıç beklemesi uygulanır. `players[].connectingUntil` bu beklemenin bitişini gösterir; daha önce bağlanmış oyuncular yeni katılım beklemesine girmez.

@@ -20,6 +20,10 @@ export function showModal(title, contentHTML, options = {}) {
     }
   }
   document.addEventListener('keydown', onKeydown);
-  requestAnimationFrame(() => { if (!overlay.isConnected) return; options.onMount?.(overlay); overlay.querySelector('input,button,textarea')?.focus(); });
+  requestAnimationFrame(() => {
+    if (!overlay.isConnected) return;
+    options.onMount?.(overlay);
+    if (!overlay.contains(document.activeElement)) overlay.querySelector('.modal-body input, .modal-body select, .modal-body textarea, .modal-body button, .modal-close')?.focus();
+  });
   return overlay;
 }

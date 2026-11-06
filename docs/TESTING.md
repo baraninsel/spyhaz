@@ -4,7 +4,7 @@
 
 npm test, istemci yardımcıları ve bağımsız oyun motorunu test eder. npm run test:integration gerçek workerd, SQLite kayıt dizini ve WebSocket bağlantıları kullanır.
 
-Güncel kapsam 48 istemci/motor ve 5 entegrasyon testidir. İstemci akış testleri Vite'ın gerçek üretim paketini JSDOM'da çalıştırır: davetle oturum dönüşü, engellenen WebSocket için HTTP yedeği, başarısız konum kaydı, sohbet taslağı ve izleyici sonuç ekranı. JSDOM görsel tarayıcı veya fiziksel cihaz testi değildir.
+Güncel kapsam 61 istemci/motor ve 5 entegrasyon testidir. İstemci akış testleri Vite'ın gerçek üretim paketini JSDOM'da çalıştırır: davetle oturum dönüşü, engellenen WebSocket için HTTP yedeği, başarısız konum kaydı, sohbet taslağı ve izleyici sonuç ekranı. Ek olarak 15 ayrı arayüzün aynı hazır ayarı alıp hazır aşamasından oyuna geçmesi, gecikmiş onay, yanıt kaybı, sıraya alınmış ayarlar ve bağlanması süren yeni oyuncu korunur. JSDOM görsel tarayıcı veya fiziksel cihaz testi değildir.
 
 Kapsam:
 - Gizli konum sızıntısı ve diğer casusun kimliği.
