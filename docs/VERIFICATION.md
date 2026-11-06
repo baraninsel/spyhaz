@@ -1,4 +1,12 @@
-# Güncel arayüz ve bağlantı doğrulaması
+# 6 Kasım 2026 — Ayar ve telefon doğrulaması
+
+- 61 istemci/motor ve 5 Worker/SQLite testi; TypeScript, üretim derlemeleri ve npm audit başarılı.
+- Gerçek üretim JavaScript paketiyle 15 ayrı DOM istemcisi aynı 10 konumlu ayarı aldı ve hazır aşamasından oyuna geçti. Gecikmiş onay, yanıt kaybı, sıraya alınan ayarlar ve yeni katılımcının bağlantısını bekleme denetlendi.
+- Canlı Vercel adresinde 15 HTTP oyuncusu, 10 konum, elle 2 casus / 11 dakika; tüm oyuncular PLAYING, açık soruya dönüş ve sonuç kurtarma geçti. Ayrı Worker denemesinde 15 WebSocket oyuncusu geçti. Test üyelikleri çıkarıldı.
+- Kaynak `9a52082`; GitHub Actions ve Vercel kontrolleri başarılı. Worker sürümü `29486739-ee09-453f-bf0f-cf073d0f7986`, Vercel üretim yayını `7bGAAEjhivZ9UtLnzaMfk5xGzva9`.
+- Computer Use tarayıcı adresini güvenli biçimde belirleyemediği için görsel test durdu. Fiziksel telefon/ekran kontrolü tamamlanmadı. Ayrıntılar [ayar ve mobil raporunda](SETTINGS-MOBILE-2026-11-06.md).
+
+# Önceki arayüz ve bağlantı doğrulaması
 
 - İlk sürümün tema ve ekran sınıfları geri getirildi; güncel inceleme [RESTORATION-REVIEW.md](RESTORATION-REVIEW.md) içinde.
 - 48 istemci/motor ve 5 gerçek workerd/SQLite testi geçti; TypeScript, üretim derlemesi ve npm audit başarılı.

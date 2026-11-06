@@ -1,6 +1,7 @@
 // Explicit public-network test; creates one disposable room, never joins existing rooms.
 // Usage: node tests/deployed-http-smoke.mjs https://spyhaz.vercel.app
 import assert from 'node:assert/strict';
+import { loadPreset } from '../client/src/utils/presetManager.js';
 const base=new URL(process.argv[2]||'http://127.0.0.1:8787');
 const origin=process.argv[3]||base.origin;
 const letters='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -36,9 +37,13 @@ try{
   members.push(host=await connect(0));
   for(let i=1;i<15;i++){await post('/api/rooms/'+code+'/players',players[i]);members.push(await connect(i));}
   await host.request('sync');assert.equal(host.view.players.filter(p=>p.connected).length,15);
+  await host.send('room:settings',loadPreset('__default_mini'));
+  for(const client of members){await client.request('sync');assert.equal(client.view.settings.enabledLocationIds.length,10);assert.equal(client.view.settings.duration,360);assert.equal(client.view.settings.spyCount,1);}
+  await host.send('room:settings',{spyCount:2,duration:660});
+  for(const client of members){await client.request('sync');assert.equal(client.view.settings.enabledLocationIds.length,10);assert.equal(client.view.settings.duration,660);assert.equal(client.view.settings.spyCount,2);}
   await host.send('game:start');
   for(const client of members){await client.request('sync');await client.send('game:ready');}
-  for(const client of members)await client.request('sync');
+  for(const client of members){await client.request('sync');assert.equal(client.view.state,'PLAYING');assert.equal(client.view.game.locations.length,10);}
   const roundId=host.view.game.id;assert.equal(host.view.state,'PLAYING');
   const spies=members.filter(c=>c.view.game.isSpy);assert.equal(spies.length,2);
   for(const spy of spies)assert.equal(spy.view.game.location,null);
@@ -54,7 +59,7 @@ try{
   await host.send('game:lobby');
   for(let i=14;i>=1;i--){await members[i].request('sync');await members[i].send('room:leave');}
   await host.request('sync');await host.send('room:leave');
-  console.log(JSON.stringify({ok:true,server:base.origin,transport:'authenticated HTTP only',players:15,spies:2,checks:['same-origin entry','private cards','open question recovery','result recovery','duplicate command','test memberships removed']}));
+  console.log(JSON.stringify({ok:true,server:base.origin,transport:'authenticated HTTP only',players:15,spies:2,locations:10,checks:['same-origin entry','preset shared by all players','manual spy count and duration retained','all players reach playing','private cards','open question recovery','result recovery','duplicate command','test memberships removed']}));
 }catch(error){
   try{if(host){await host.request('sync');if(host.view.game&&host.view.state!=='RESULT')await host.send('host:abort');}}catch{}
   throw error;

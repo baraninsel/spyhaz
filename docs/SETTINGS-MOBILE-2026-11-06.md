@@ -20,6 +20,10 @@ Eski tema ve masaüstü düzeni korunur. Casus sayısı ile tur süresi kurucu t
 
 61 istemci/motor ve 5 gerçek Worker/SQLite testi geçti. TypeScript, üretim derlemeleri ve npm audit başarılıdır.
 
+Ana Vercel adresinde 15 HTTP oyuncusuyla gerçek küçük grup ayarının herkese 10 konum olarak gitmesi, elle 2 casus / 11 dakika seçiminin korunması, herkesin PLAYING aşamasına ulaşması, açık soru/sonuç dönüşü ve tekrar komut koruması geçti. Worker üzerinde ayrıca 15 WebSocket oyuncusu doğrulandı. Bütün deneme üyelikleri çıkarıldı.
+
+Yayındaki uygulama kaydı `9a52082`; Worker sürümü `29486739-ee09-453f-bf0f-cf073d0f7986`, Vercel üretim yayını `7bGAAEjhivZ9UtLnzaMfk5xGzva9`. GitHub Actions ve Vercel kontrolleri bu kaynak kaydında başarılıdır.
+
 Computer Use, Windows'ta mevcut tarayıcı adresini güvenli biçimde doğrulayamadığı için bu tur görsel testi durdurdu. Başka tarayıcı otomasyonuyla bu kısıt aşılmadı. Fiziksel Android/iPhone/iPad denemesi hâlâ gereklidir.
 
 Ücretsiz kotalar geçerlidir. HTTP yedeğinde ekranlar arasında 2–5 saniyelik yenileme gecikmesi olabilir. İnternetin tamamen kesilmesi veya işletim sisteminin arka planı durdurması engellenemez; kimlik ve oda dönüşü korunur. Ana dala birleştirme yapılmaz; yayın inceleme dalından alınır.

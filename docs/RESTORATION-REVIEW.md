@@ -30,6 +30,6 @@
 - Ücretsiz kotalar, yoğun kullanım ve kötüye kullanım hâlâ sınırdır. Oda oluşturma/katılma için dağıtık IP hız sınırlaması bu değişikliğin kapsamında değildir.
 - 13–15 kişilik deneysel oyun dengesi ve gerçek Android/iPhone/iPad kabul denemesi sınıfta ölçülmelidir. Hatasızlık veya her ağda erişim garantisi verilmez.
 - Kaynak `codex/reliable-multiplayer` dalına gönderildi; `main` birleştirmesi yapılmadı. Canlı Vercel yayını bu daldan elle alındı. Eski `main` kaynağına yeni bir üretim yayını tetiklenmeden önce incelemedeki değişiklikler birleştirilmelidir.
-- Güncel revizyon için GitHub otomatik kontrol durumu doğrulanamadı: dal kaydı yeni SHA'yı döndürürken PR başlığı eski SHA'yı döndürdü ve yeni kontrol sonucu görünmedi. Yukarıdaki 53 test sonucu yerel çalıştırmalardan, canlı sonuçlar ayrı test odalarından gelir.
+- 6 Kasım güncellemesinde GitHub otomatik kontrolleri yeniden doğrulandı: `9a52082` kaydında Actions ve Vercel başarılıdır. Güncel ayar/telefon çalışması ve 66 test sonucu [ayrı raporda](SETTINGS-MOBILE-2026-11-06.md) yer alır.
 
 Canlı denemeler yalnızca rastgele kodlu test odalarında yapılır; mevcut oyunlara katılınmaz. Kaynak incelemesi: https://github.com/baraninsel/spyhaz/pull/1.
