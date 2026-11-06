@@ -1,0 +1,60 @@
+# 6 Kasım 2026 — Ayar ve telefon doğrulaması
+
+- 61 istemci/motor ve 5 Worker/SQLite testi; TypeScript, üretim derlemeleri ve npm audit başarılı.
+- Gerçek üretim JavaScript paketiyle 15 ayrı DOM istemcisi aynı 10 konumlu ayarı aldı ve hazır aşamasından oyuna geçti. Gecikmiş onay, yanıt kaybı, sıraya alınan ayarlar ve yeni katılımcının bağlantısını bekleme denetlendi.
+- Canlı Vercel adresinde 15 HTTP oyuncusu, 10 konum, elle 2 casus / 11 dakika; tüm oyuncular PLAYING, açık soruya dönüş ve sonuç kurtarma geçti. Ayrı Worker denemesinde 15 WebSocket oyuncusu geçti. Test üyelikleri çıkarıldı.
+- Kaynak `9a52082`; GitHub Actions ve Vercel kontrolleri başarılı. Worker sürümü `29486739-ee09-453f-bf0f-cf073d0f7986`, Vercel üretim yayını `7bGAAEjhivZ9UtLnzaMfk5xGzva9`.
+- Computer Use tarayıcı adresini güvenli biçimde belirleyemediği için görsel test durdu. Fiziksel telefon/ekran kontrolü tamamlanmadı. Ayrıntılar [ayar ve mobil raporunda](SETTINGS-MOBILE-2026-11-06.md).
+
+# Önceki arayüz ve bağlantı doğrulaması
+
+- İlk sürümün tema ve ekran sınıfları geri getirildi; güncel inceleme [RESTORATION-REVIEW.md](RESTORATION-REVIEW.md) içinde.
+- 48 istemci/motor ve 5 gerçek workerd/SQLite testi geçti; TypeScript, üretim derlemesi ve npm audit başarılı.
+- Canlı Worker'da 15 WebSocket oyuncusu ve ayrı odada 15 HTTP oyuncusu; canlı `https://spyhaz.vercel.app` üzerinden de 15 HTTP oyuncusu ile giriş, kart gizliliği, aynı soru/tura dönüş, sonuç kurtarma ve tekrar komut koruması geçti. Test üyelikleri çıkarıldı.
+- Ana Vercel adresi ve alternatif Worker giriş adresi HTTP 200 döndürüyor. Ana sitenin `/api` yönlendirmesi canlı 15 kişilik HTTP testinde kullanıldı.
+- Cloudflare sürümü `cac3db6d-e4c4-478d-b57e-90a1cf1d57ef`; Vercel üretim yayını `GUpuCgaWcy3TTe2DTfACYLvQ3ob8`.
+- Bu güncellemede Work yerel tarayıcı erişimi kapalıydı. Görsel ve fiziksel telefon kabul denemesi tamamlanmadı. Aşağıdaki masaüstü gözlemleri önceki sürümün tarihli kaydıdır.
+
+# Önceki uygulama doğrulaması — 25 Ekim 2026
+
+Yerel kaynak dalı: codex/reliable-multiplayer
+Kaynak başlangıcı: baraninsel/spyhaz @ 8ae86d620553021a2ca0438f02d50a61e3bd2884
+
+## Geçen kontroller
+
+- 37 oyun motoru / istemci yardımcı testi.
+- 3 gerçek workerd / WebSocket / kalıcı SQLite entegrasyon testi.
+- TypeScript denetimi.
+- Vite üretim derlemesi.
+- Cloudflare Worker dry-run derlemesi.
+- npm audit: bilinen güvenlik açığı yok.
+
+Entegrasyonda 15 oyuncu bağlandı; çalışma ortamı kapatılıp yeniden açılarak aynı tur, aynı oyuncu kimliği ve gizli kart doğrulandı. Rol gösterimi, seçilmiş soru hedefi, verilmiş oy ve sonuç ekranına dönüş kontrol edildi.
+
+Masaüstü tarayıcıda: yeni öğretici, oda oluşturma, önerilen süreyi uygulama, üç oyuncuyla hazır aşaması, soru seçme, soru devam ederken sayfa yenileme, suçlama, puanlama ve sonuç ekranında yenileme gözlemlendi.
+
+## Canlı yayın doğrulaması
+
+- Arayüz: https://spyhaz.vercel.app/
+- Oyun sunucusu: https://spyhaz-game.blox-trade-radar-baran.workers.dev
+- Vercel önizlemesi: https://spyhaz-fhe8vpy9n-baraninsel0-4282s-projects.vercel.app
+- GitHub dalının sabit önizleme adresi: https://spyhaz-git-codex-reliable-mul-c661c0-baraninsel0-4282s-projects.vercel.app (Vercel giriş koruması korunur).
+- Cloudflare Workers Free ve Vercel Hobby planları hesaplarda doğrulandı; ücretli plana geçilmedi.
+- Cloudflare sürümü: 20e45768-10b7-4014-aa9a-766b601107fa. Kalıcı SQLite oda sınıfı v1 migration ile oluşturuldu.
+- Vercel kök dizini depo köküne, derleme komutu npm run build -w client, çıktı client/dist olarak ayarlandı. VITE_BACKEND_URL Production ve Preview ortamlarında yeni Worker'a bağlandı.
+- Canlı Worker üzerinde 15 yapay oyuncu / 2 casus ile HTTP/CORS, eşzamanlı WebSocket, gizli kartlar, hazır aşaması, açık soruya dönüş ve sonuç ekranına dönüş geçti. Deneme üyelikleri çıkarıldı.
+- Masaüstü tarayıcıda internetteki Vercel önizlemesinden oda oluşturuldu; yenileme sonrası aynı isim, kurucu ve oda kodu korundu.
+- Canlı üretim adresi giriş gerektirmeden HTTP 200 döndürüyor; oda oluşturma, sohbet ve yenileme sonrası aynı oyuncu/oda/sohbete dönüş tarayıcıda doğrulandı.
+- Kaynaklar codex/reliable-multiplayer dalında GitHub'a gönderildi; değişiklik incelemesi https://github.com/baraninsel/spyhaz/pull/1 içinde. Önceki revizyonda GitHub Actions'ın iki çalıştırması ve Vercel önizleme kontrolü başarılı; son revizyon kontrolleri PR üzerinde izlenebilir.
+
+Dağıtılmış sunucu denemesi açıkça şu komutla tekrarlanabilir (rastgele ve yalnızca test oyuncularını içeren bir oda oluşturur):
+
+```sh
+node tests/deployed-smoke.mjs https://spyhaz-game.blox-trade-radar-baran.workers.dev
+```
+
+## Kalan kabul denemesi
+
+Gerçek Android/iPhone/iPad ve 15 fiziksel cihazla sınıf kabul denemesi henüz yapılmadı. Yapay WebSocket istemcileri gerçek mobil işletim sisteminin arka plan davranışını doğrulamaz. Farklı internetlerde ekran kilidi, uygulama değiştirme, Wi-Fi/mobil veri geçişi ve çok turlu oyun kontrol edilmelidir.
+
+Eski bellek tabanlı odalar yeni sunucuya taşınmaz; güncellenen sürümde yeni oda açılır. Yayın komutları ve proje ayarları README.md içindedir.

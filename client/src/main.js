@@ -1,8 +1,3 @@
-// ══════════════════════════════════════════════════════════════
-// SPYHAZ - Main Entry Point
-// ══════════════════════════════════════════════════════════════
-
-// Styles
 import './styles/index.css';
 import './styles/home.css';
 import './styles/lobby.css';
@@ -11,416 +6,372 @@ import './styles/vote.css';
 import './styles/result.css';
 import './styles/components.css';
 import './styles/notebook.css';
-
-// Core
-import { initSocket, getSocket, stopSessionHeartbeat, attemptSessionReconnect } from './socket.js';
-import { registerRoute, initRouter, navigateTo, getCurrentScreen } from './router.js';
-import { getState, setState, resetGameState, saveSession, clearSession } from './state.js';
-
-// Screens
-import { renderHome } from './screens/home.js';
-import { renderLobby, updatePlayerList, updateLobbySettings } from './screens/lobby.js';
-import { renderGame, updateTimer, updateQuestionSection, updateGamePlayers, updateSpyActions } from './screens/game.js';
-import { updateNotebookPlayers } from './components/notebook.js';
-import { showVoteRequest, handleVoteRequestResult, updateVotedPlayer, showVoteResults, removeVoteOverlay } from './screens/vote.js';
-import { showSpyGuessResult } from './screens/spyGuess.js';
-import { renderResult } from './screens/result.js';
-
-// Utils
-import { playSFX, toggleMute, getMuteState } from './utils/audio.js';
-
-// Components
+import './styles/recovery.css';
+import { homeView, lobbyView, gameView, resultView, watcherView, action, reasons as reasonText } from './views.js';
+import { getState, setState, loadSession, readStorage, writeStorage } from './state.js';
+import { backend, enterRoom, restoreSession, retryConnection, connectionStatus, sendCommand, endSession } from './socket.js';
+import { escapeHtml as e } from './utils/dom.js';
 import { showToast } from './components/toast.js';
-import { handleNewChatMessage } from './components/chat.js';
+import { showModal, closeModal } from './components/modal.js';
+import { showTutorial } from './components/tutorial.js';
+import { openLocationManager } from './components/locationManager.js';
+import { renderChat, renderChatMessages } from './components/chat.js';
+import { initNotebookToggle, clearNotebookState } from './components/notebook.js';
+import { renderKickChat } from './components/kickChat.js';
+import { saveGameToHistory, getHistory, getStats } from './utils/history.js';
+import { getPresets } from './utils/presetManager.js';
+import { openPresets } from './components/presets.js';
+import { playSFX, toggleMute, getMuteState } from './utils/audio.js';
+import { recommendedDuration, normalizeCode } from '../../shared/rules.js';
 
-// ── Initialize ─────────────────────────────────────────────────
-const socket = initSocket();
+const app = document.getElementById('app');
+const ui = { roleVisible: false, showCode: false, roundId: null };
+const compactQuery = window.matchMedia?.('(max-width: 768px)');
+ui.compact = compactQuery?.matches || false;
+ui.rosterOpen = !ui.compact;
+let lastSignature = '', modalContext = '', clockOffset = 0, tickSecond = null;
+let settingsQueue = Promise.resolve(), settingsPending = 0, lastPhase = '', lastChatKey = '', lobbyLayout = '', gameLayout = '';
+const pendingActions = new Set();
+const timeText = seconds => Math.floor(Math.max(0, seconds) / 60) + ':' + String(Math.max(0, seconds) % 60).padStart(2, '0');
 
-// Mute toggle listener
-const muteBtn = document.getElementById('mute-toggle');
-if (muteBtn) {
-  muteBtn.addEventListener('click', () => {
-    const isMuted = toggleMute();
-    muteBtn.textContent = isMuted ? '🔇' : '🔊';
+const statusBar = document.createElement('div');
+statusBar.id = 'connection-banner'; statusBar.setAttribute('role', 'status'); statusBar.setAttribute('aria-live', 'polite');
+document.body.prepend(statusBar);
+statusBar.onclick = event => { if (event.target.closest('[data-retry]')) retryConnection(); };
+function paintConnection(error = '') {
+  const status = connectionStatus();
+  statusBar.hidden = ['ready', 'idle'].includes(status);
+  if (!statusBar.hidden) {
+    const labels = { connecting: 'Odaya bağlanılıyor…', reconnecting: 'Bağlantı yenileniyor. Odan korunuyor.', offline: 'İnternet bekleniyor. Geri geldiğinde aynı oyuncuyla devam edeceksin.', replaced: 'Oyun başka sekmede açık.', ended: 'Oturum sona erdi.' };
+    statusBar.innerHTML = '<span>' + e(error || labels[status] || 'Bağlantı bekleniyor…') + '</span>' + (status !== 'ended' ? '<button class="btn btn-ghost" data-retry>' + (status === 'replaced' ? 'Bu sekmede devam et' : 'Tekrar dene') + '</button>' : '');
+  }
+  app.querySelectorAll('[data-server-action]').forEach(button => {
+    button.disabled = status !== 'ready' || button.dataset.blocked === 'true' || pendingActions.has(button.dataset.action) || (settingsPending > 0 && (button.matches('[data-setting]') || button.dataset.action === 'start'));
   });
+  app.querySelector('.lobby-settings')?.setAttribute('aria-busy', String(settingsPending > 0));
+  const settingsStatus = document.getElementById('settings-status');
+  if (settingsStatus) settingsStatus.textContent = settingsPending ? 'Ayarlar kaydediliyor…' : status === 'ready' ? 'Ayarlar tüm oyunculara uygulandı.' : 'Bağlantı bekleniyor; ayarlar korunuyor.';
 }
-
-// ── Register Routes ────────────────────────────────────────────
-registerRoute('home', renderHome);
-registerRoute('lobby', (container) => renderLobby(container));
-registerRoute('game', (container) => renderGame(container));
-
-// ── Reconnecting Overlay ───────────────────────────────────────
-let reconnectTimeout = null;
-
-function showReconnectOverlay() {
-  if (document.getElementById('reconnect-overlay')) return;
-  const overlay = document.createElement('div');
-  overlay.id = 'reconnect-overlay';
-  overlay.className = 'reconnect-overlay';
-  overlay.innerHTML = `
-    <div class="reconnect-box">
-      <div class="reconnect-spinner"></div>
-      <div class="reconnect-text">Yeniden bağlanılıyor...</div>
-      <div class="reconnect-subtext">Lütfen bekleyin</div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  // Timeout: 8 saniye sonra overlay'i kaldır, takılmayı önle
-  reconnectTimeout = setTimeout(() => {
-    removeReconnectOverlay();
-    showToast('Bağlantı zaman aşımına uğradı.', 'warning');
-    navigateTo('home');
-  }, 8000);
+async function perform(type, payload = {}, element) {
+  const key = element?.dataset.action;
+  if (key && pendingActions.has(key)) return null;
+  if (key) pendingActions.add(key);
+  if (element) element.disabled = true;
+  try { return await sendCommand(type, payload); }
+  catch (error) { showToast(error.message, 'error'); return null; }
+  finally { if (key) pendingActions.delete(key); paintConnection(); }
 }
-
-function removeReconnectOverlay() {
-  if (reconnectTimeout) {
-    clearTimeout(reconnectTimeout);
-    reconnectTimeout = null;
-  }
-  const overlay = document.getElementById('reconnect-overlay');
-  if (overlay) {
-    overlay.classList.add('reconnect-fade-out');
-    setTimeout(() => overlay.remove(), 300);
-  }
+function updateSettings(patch) {
+  const intended = getState().snapshot;
+  settingsPending++; paintConnection();
+  const task = settingsQueue.catch(() => {}).then(() => {
+    const current = getState().snapshot;
+    if (!intended || current?.code !== intended.code || current.contextId !== intended.contextId || current.state !== 'LOBBY')
+      throw new Error('Oda veya tur değişti. Ayarı güncel lobide tekrar seç.');
+    return sendCommand('room:settings', patch);
+  }).finally(() => { settingsPending--; paintConnection(); });
+  settingsQueue = task;
+  return task;
 }
-
-// ── Reconnect Event Handlers ───────────────────────────────────
-window.addEventListener('spyhaz:reconnecting', () => {
-  showReconnectOverlay();
-});
-
-window.addEventListener('spyhaz:reconnectFailed', () => {
-  removeReconnectOverlay();
-  // URL hash'i temizle ki home'a düşsün
-  window.location.hash = 'home';
-});
-
-window.addEventListener('spyhaz:reconnected', (e) => {
-  removeReconnectOverlay();
-  const data = e.detail;
-  console.log('[Reconnect] Handling reconnect response:', data.screen);
-
-  // Restore base state
-  setState({
-    playerId: data.playerId,
-    playerName: data.players?.find(p => p.id === data.playerId)?.name || '',
-    roomCode: data.code,
-    isHost: data.isHost,
-    settings: data.settings,
-    players: data.players,
-    reconnectToken: data.reconnectToken || getState().reconnectToken || null,
-  });
-
-  // Restore chat messages if any
-  if (data.chat && data.chat.length > 0) {
-    setState({ chatMessages: data.chat });
-  }
-
-  if (data.screen === 'lobby') {
-    // Reconnect to lobby
-    showToast('Lobiye yeniden bağlandı! 🔄', 'success');
-    navigateTo('lobby');
-  } else if (data.screen === 'game' && data.gameData) {
-    // Reconnect to active game
-    const gd = data.gameData;
-    setState({
-      gameActive: true,
-      role: gd.role,
-      isSpy: gd.isSpy,
-      location: gd.location,
-      locations: gd.locations,
-      spyGuessesLeft: gd.spyGuessesLeft || 0,
-      previousLocationId: gd.previousLocationId,
-      timerRemaining: gd.timerRemaining,
-      timerPaused: gd.timerPaused,
-      currentAskerId: gd.currentAskerId,
-      currentAskerName: gd.currentAskerName,
-      availableTargets: gd.availableTargets,
-      questionRound: gd.questionRound,
-      votePhase: gd.votePhase,
-      voteRequesterId: gd.voteRequesterId,
-      voteRequesterName: gd.voteRequesterName,
-    });
-    showToast('Oyuna yeniden bağlandı! 🔄', 'success');
-    navigateTo('game');
-  }
-
-  // Re-save session (in case anything changed — token rotation etc)
-  saveSession();
-});
-
-// ── Socket Event Handlers ──────────────────────────────────────
-
-// Room events
-socket.on('room:playerJoined', ({ player }) => {
-  const state = getState();
-  const players = [...state.players, player];
-  setState({ players });
-  if (getCurrentScreen() === 'lobby') updatePlayerList();
-  showToast(`${player.name} odaya katıldı!`, 'info');
-  playSFX.join();
-});
-
-socket.on('room:playerLeft', ({ playerId, newHostId, players }) => {
-  const state = getState();
-  const leavingPlayer = state.players.find(p => p.id === playerId);
-  setState({
-    players: players || state.players.filter(p => p.id !== playerId),
-    isHost: newHostId ? newHostId === state.playerId : state.isHost,
-  });
-  if (getCurrentScreen() === 'lobby') updatePlayerList();
-  if (leavingPlayer) showToast(`${leavingPlayer.name} ayrıldı.`, 'warning');
-});
-
-socket.on('room:settingsUpdated', ({ settings }) => {
-  setState({ settings });
-  if (getCurrentScreen() === 'lobby') updateLobbySettings();
-  showToast('Ayarlar güncellendi.', 'info');
-});
-
-socket.on('room:playerDisconnected', ({ playerId, playerName }) => {
-  showToast(`${playerName} bağlantısı koptu.`, 'warning');
-  const state = getState();
-  const updated = state.players.map(p =>
-    p.id === playerId ? { ...p, connected: false } : p
-  );
-  setState({ players: updated });
-  if (getCurrentScreen() === 'game') updateGamePlayers();
-  if (getCurrentScreen() === 'game') updateNotebookPlayers();
-  if (getCurrentScreen() === 'lobby') updatePlayerList();
-});
-
-socket.on('room:playerReconnected', ({ playerId, playerName }) => {
-  showToast(`${playerName} yeniden bağlandı! ✅`, 'success');
-  const state = getState();
-  const updated = state.players.map(p =>
-    p.id === playerId ? { ...p, connected: true } : p
-  );
-  setState({ players: updated });
-  if (getCurrentScreen() === 'game') updateGamePlayers();
-  if (getCurrentScreen() === 'game') updateNotebookPlayers();
-  if (getCurrentScreen() === 'lobby') updatePlayerList();
-});
-
-socket.on('room:error', ({ message }) => {
-  showToast(message, 'error');
-});
-
-// Game started
-socket.on('game:started', (data) => {
-  setState({
-    gameActive: true,
-    role: data.role,
-    isSpy: data.isSpy,
-    location: data.location,
-    locations: data.locations,
-    players: data.players,
-    spyGuessesLeft: data.spyGuessesLeft || 0,
-    previousLocationId: data.previousLocationId,
-    chatMessages: [],
-    unreadCount: 0,
-    chatCollapsed: false,
-  });
-
-  // Save session (game is active now)
-  saveSession();
-
-  // Show role reveal overlay
-  showRoleReveal();
-  playSFX.start();
-});
-
-socket.on('game:allReady', () => {
-  // Navigate to game screen when all players have seen their roles
-  navigateTo('game');
-});
-
-// Question events
-socket.on('question:turn', ({ askerId, askerName, availableTargets, round }) => {
-  setState({
-    currentAskerId: askerId,
-    currentAskerName: askerName,
-    availableTargets,
-    questionRound: round,
-    askedTarget: null,
-  });
-  if (getCurrentScreen() === 'game') {
-    updateQuestionSection();
-    updateGamePlayers();
-  }
-
-  // Notify if it's your turn
-  if (askerId === getState().playerId) {
-    showToast('Sıra sende! Kime soru sormak istiyorsun?', 'info');
-    playSFX.turn();
-  }
-});
-
-socket.on('question:asked', ({ askerId, askerName, targetId, targetName }) => {
-  setState({ askedTarget: targetId });
-  if (getCurrentScreen() === 'game') {
-    updateQuestionSection();
-    updateGamePlayers();
-  }
-});
-
-socket.on('question:newRound', ({ round }) => {
-  setState({ questionRound: round });
-  showToast(`Yeni soru turu başladı! (Tur ${round})`, 'info');
-});
-
-// Timer events
-socket.on('timer:update', ({ remaining, isPaused }) => {
-  setState({ timerRemaining: remaining, timerPaused: isPaused });
-  if (getCurrentScreen() === 'game') updateTimer();
-  if (!isPaused && remaining <= 10 && remaining > 0) {
-    playSFX.tick();
-  }
-});
-
-socket.on('timer:expired', () => {
-  showToast('⏱️ Süre doldu!', 'error');
-  playSFX.alert();
-});
-
-// Vote events
-socket.on('vote:requested', ({ requesterId, requesterName }) => {
-  setState({ votePhase: 'REQUEST', voteRequesterId: requesterId, voteRequesterName: requesterName });
-  showVoteRequest(requesterId, requesterName);
-  playSFX.alert();
-});
-
-socket.on('vote:requestResult', ({ accepted, yes, no }) => {
-  handleVoteRequestResult(accepted);
-  if (!accepted) {
-    setState({ votePhase: null });
-  }
-});
-
-socket.on('vote:start', ({ players }) => {
-  setState({ votePhase: 'VOTING', votedPlayers: new Set() });
-});
-
-socket.on('vote:playerVoted', ({ playerId }) => {
-  updateVotedPlayer(playerId);
-});
-
-socket.on('vote:result', (data) => {
-  showVoteResults(data);
-});
-
-// Spy guess events
-socket.on('spy:guessResult', (data) => {
-  showSpyGuessResult(data);
-  if (getState().isSpy) {
-    setState({ spyGuessesLeft: data.guessesLeft });
-    if (getCurrentScreen() === 'game') updateSpyActions();
-  }
-});
-
-// Game over
-socket.on('game:over', (data) => {
-  const app = document.getElementById('app');
-  const state = getState();
-  const won = (state.isSpy && data.winner === 'SPY') || (!state.isSpy && data.winner === 'PLAYERS');
-  if (won) playSFX.win();
-  else playSFX.lose();
-  renderResult(app, data);
-});
-
-// Return to lobby
-socket.on('game:returnedToLobby', ({ players, settings, scores, roundNumber }) => {
-  resetGameState();
-  setState({ players, settings, scores: scores || {}, roundNumber: roundNumber || 0 });
-  saveSession(); // Update session (back in lobby)
-  navigateTo('lobby');
-  showToast('Lobiye dönüldü!', 'info');
-});
-
-// Chat
-socket.on('chat:message', (msg) => {
-  handleNewChatMessage(msg);
-});
-
-// ── Role Reveal Overlay ────────────────────────────────────────
-function showRoleReveal() {
-  const state = getState();
-
-  const overlay = document.createElement('div');
-  overlay.className = 'reveal-overlay';
-  overlay.id = 'reveal-overlay';
-
-  if (state.isSpy) {
-    overlay.innerHTML = `
-      <div class="card reveal-card" style="border-color: var(--danger); box-shadow: var(--shadow-card), var(--shadow-danger);">
-        <div class="reveal-emoji">🕵️</div>
-        <div class="reveal-spy-title">SEN CASUSSUN!</div>
-        <div class="reveal-spy-desc">Konumu bilmiyorsun. Diğer oyuncuların sorularından konumu çözmeye çalış!</div>
-        <button class="btn btn-danger btn-pixel btn-block" id="reveal-ready" style="font-size:10px;">ANLADIM</button>
-      </div>
-    `;
-  } else {
-    overlay.innerHTML = `
-      <div class="card reveal-card card-glow">
-        <div class="reveal-emoji">${state.location.emoji}</div>
-        <div class="reveal-location">${state.location.name}</div>
-        <div class="reveal-role">${state.role}</div>
-        <div class="divider"></div>
-        <div style="color: var(--text-secondary); font-size: var(--fs-sm); margin-bottom: var(--sp-6);">
-          Casusu bulmaya çalış! Konumu belli etmeden sorular sor.
-        </div>
-        <button class="btn btn-primary btn-pixel btn-block" id="reveal-ready" style="font-size:10px;">ANLADIM</button>
-      </div>
-    `;
-  }
-
-  document.body.appendChild(overlay);
-
-  overlay.querySelector('#reveal-ready').addEventListener('click', () => {
-    socket.emit('game:ready');
-    overlay.querySelector('#reveal-ready').disabled = true;
-    overlay.querySelector('#reveal-ready').textContent = 'DİĞERLERİ BEKLENİYOR...';
-
-    // Remove overlay when game:allReady fires
-    const checkReady = () => {
-      const o = document.getElementById('reveal-overlay');
-      if (o) o.remove();
-    };
-    socket.once('game:allReady', checkReady);
-    // Fallback removal after 15s
-    setTimeout(checkReady, 15000);
-  });
+function presetLabel(settings) {
+  const ids = [...settings.enabledLocationIds].sort((a,b) => a-b).join(',');
+  return getPresets().find(p => p.duration === settings.duration && p.spyCount === settings.spyCount && p.professions === settings.professions &&
+    [...p.enabledLocationIds].sort((a,b) => a-b).join(',') === ids)?.name || 'Özel ayarlar';
 }
-
-// ── Start Router ───────────────────────────────────────────────
-initRouter();
-
-// ── URL-Based Reconnect ────────────────────────────────────────
-// Sayfa ilk yüklendiğinde URL'de oda kodu varsa reconnect dene
-// Yoksa direkt home ekranı göster
-(function initialReconnectCheck() {
-  const rawHash = window.location.hash.slice(1) || '';
-  const parts = rawHash.split('/');
-  const urlRoomCode = parts[1] || null;
-
-  if (urlRoomCode) {
-    // URL'de oda kodu var → session'dan reconnect dene
-    console.log('[Init] Room code in URL:', urlRoomCode, '— attempting reconnect');
-    // Socket bağlandığında reconnect dene
-    const tryReconnect = () => {
-      attemptSessionReconnect();
-      socket.off('connect', tryReconnect);
-    };
-    if (socket.connected) {
-      attemptSessionReconnect();
-    } else {
-      socket.on('connect', tryReconnect);
+function renderHome() { app.innerHTML = homeView(loadSession(backend), getStats()); }
+function renderLobby(s) {
+  ui.now = Date.now() + clockOffset;
+  ui.presetLabel = presetLabel(s.settings);
+  lobbyLayout = JSON.stringify([s.settings,s.hostId,s.contextId,ui.showCode,ui.compact]);
+  app.innerHTML = lobbyView(s, ui);
+  renderChat(document.getElementById('room-chat'));
+}
+function patchLobby(s) {
+  const layout = JSON.stringify([s.settings,s.hostId,s.contextId,ui.showCode,ui.compact]);
+  if (layout !== lobbyLayout || !app.querySelector('.lobby-screen')) return false;
+  ui.now = Date.now() + clockOffset;
+  const template = document.createElement('template'); template.innerHTML = lobbyView(s, ui);
+  for (const selector of ['.lobby-players','.lobby-actions-card','.recovery-tools']) {
+    const old = app.querySelector(selector), fresh = template.content.querySelector(selector);
+    if (!old || !fresh) continue;
+    if (old.tagName === 'DETAILS') fresh.open = old.open;
+    const selected = old.querySelector('#host-player')?.value;
+    if (selected && fresh.querySelector('#host-player option[value="' + selected + '"]')) fresh.querySelector('#host-player').value = selected;
+    old.replaceWith(fresh);
+  }
+  const oldNotice = app.querySelector('.recovery-notice'), freshNotice = template.content.querySelector('.recovery-notice');
+  if (oldNotice) { if (freshNotice) oldNotice.replaceWith(freshNotice); else oldNotice.remove(); }
+  else if (freshNotice) app.querySelector('.lobby-header').after(freshNotice);
+  const oldHint = app.querySelector('.lobby-settings > .recovery-hint'), freshHint = template.content.querySelector('.lobby-settings > .recovery-hint');
+  if (oldHint) { if (freshHint) oldHint.replaceWith(freshHint); else oldHint.remove(); }
+  else if (freshHint) app.querySelector('.lobby-settings').append(freshHint);
+  return true;
+}
+function renderGame(s) {
+  gameLayout = JSON.stringify([s.game.id,ui.roleVisible,ui.compact,getState().kickChatVisible,s.hostId]);
+  app.innerHTML = gameView(s, ui, eliminationSet(s), getState().kickChatVisible);
+  renderChat(document.getElementById('room-chat'));
+  initNotebookToggle(document.getElementById('notebook-drawer'));
+  const kickArea = document.getElementById('kick-chat-area');
+  if (kickArea) renderKickChat(kickArea);
+}
+function patchReady(s) {
+  if (s.state !== 'ROLE_REVEAL' || app.dataset.phase !== s.state || !app.querySelector('.game-screen') || gameLayout !== JSON.stringify([s.game.id,ui.roleVisible,ui.compact,getState().kickChatVisible,s.hostId])) return false;
+  const template = document.createElement('template'); template.innerHTML = gameView(s, ui, eliminationSet(s), getState().kickChatVisible);
+  for (const selector of ['.question-section','.game-players-card']) {
+    const old = app.querySelector(selector), fresh = template.content.querySelector(selector);
+    if (old && fresh) { if (old.tagName === 'DETAILS') fresh.open = old.open; old.replaceWith(fresh); }
+  }
+  return true;
+}
+function renderResult(s) { app.innerHTML = resultView(s); }
+function renderWatcher(s) {
+  app.innerHTML = watcherView(s, ui);
+  renderChat(document.getElementById('room-chat'));
+}
+function eliminationSet(s) {
+  try {
+    const ids = JSON.parse(readStorage('spyhaz_eliminations_' + s.game.id, '[]'));
+    return new Set(Array.isArray(ids) ? ids : []);
+  } catch { return new Set(); }
+}
+function structuralSignature(s) {
+  return JSON.stringify({ ...s, serverNow: undefined, revision: undefined, chat: undefined, summaries: undefined,
+    game: s.game ? { ...s.game, timer: { ...s.game.timer, remainingMs: undefined } } : null });
+}
+function refreshChat(s) {
+  const body = document.getElementById('chat-body');
+  if (!body) return;
+  const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 60;
+  const key = s.chat.length + ':' + (s.chat[s.chat.length - 1]?.id || '');
+  if (key === lastChatKey && body.dataset.messages === key) return;
+  renderChatMessages(body, s.chat); lastChatKey = key; body.dataset.messages = key;
+  if (nearBottom) body.scrollTop = body.scrollHeight;
+}
+function renderSnapshot(s) {
+  const phase = s.contextId + ':' + s.state;
+  const phaseChanged = lastPhase !== phase;
+  const signature = structuralSignature(s);
+  const nextModalContext = s.contextId + ':' + s.state + ':' + s.game?.question.turnId;
+  if (modalContext && modalContext !== nextModalContext) closeModal();
+  modalContext = nextModalContext;
+  if (signature !== lastSignature) {
+    const chatDraft = document.getElementById('chat-input')?.value || '';
+    const notebookExpanded = document.getElementById('notebook-drawer')?.classList.contains('notebook-open');
+    const focused = document.activeElement?.id;
+    const selection = document.activeElement?.selectionStart;
+    if (ui.roundId !== s.game?.id) {
+      ui.roundId = s.game?.id || null;
+      ui.roleVisible = s.state === 'ROLE_REVEAL' && !s.game?.readyIds.includes(s.playerId);
+      clearNotebookState();
     }
+    if (s.state === 'RESULT') renderResult(s);
+    else if (s.state === 'LOBBY') { if (!patchLobby(s)) renderLobby(s); }
+    else if (!s.game) renderWatcher(s);
+    else if (!patchReady(s)) renderGame(s);
+    const input = document.getElementById('chat-input');
+    if (input) input.value = chatDraft;
+    if (notebookExpanded) document.getElementById('notebook-tab')?.click();
+    if (focused) {
+      const element = document.getElementById(focused);
+      element?.focus();
+      if (typeof selection === 'number' && /^(text|search|url|tel|password)$/.test(element?.type || '')) element.setSelectionRange(selection, selection);
+    }
+    lastSignature = signature;
   }
-  // URL'de oda kodu yoksa → router zaten home'a yönlendirecek
-})();
-
-console.log('🕵️ Spyhaz initialized');
+  if (phaseChanged) {
+    lastPhase = phase;
+    if (typeof window.scrollTo === 'function') window.scrollTo({ top:0, left:0, behavior:'auto' });
+  }
+  app.dataset.phase = s.state;
+  refreshChat(s); updateClocks(); paintConnection();
+}
+function updateClocks() {
+  if (document.hidden) return;
+  const s = getState().snapshot;
+  const now = Date.now() + clockOffset;
+  document.querySelectorAll('[data-unlock-at]').forEach(button => {
+    button.dataset.blocked = String(now < Number(button.dataset.unlockAt) || button.dataset.baseBlocked === 'true');
+    button.disabled = connectionStatus() !== 'ready' || button.dataset.blocked === 'true' || pendingActions.has(button.dataset.action) || (button.dataset.action === 'start' && settingsPending > 0);
+  });
+  const joiningHint = document.querySelector('#start-hint[data-connecting-until]');
+  if (joiningHint && now >= Number(joiningHint.dataset.connectingUntil)) {
+    joiningHint.textContent = 'Bağlantısı tamamlanmayan oyuncular bu tur kart alamaz. Onları bekleyebilir veya lobiden çıkarabilirsin.';
+    delete joiningHint.dataset.connectingUntil;
+  }
+  if (!s?.game) return;
+  const g = s.game;
+  const remaining = Math.ceil((g.timer.deadline === null ? g.timer.remainingMs : Math.max(0, g.timer.deadline - now)) / 1000);
+  const main = document.getElementById('main-clock');
+  if (main && main.textContent !== timeText(remaining)) main.textContent = timeText(remaining);
+  document.querySelectorAll('.phase-clock').forEach(el => { const text = 'Kalan: ' + Math.ceil(Math.max(0, (g.phaseDeadline || now) - now) / 1000) + ' sn'; if (el.textContent !== text) el.textContent = text; });
+  if (g.state === 'PLAYING' && g.timer.deadline && remaining > 0 && remaining <= 10 && tickSecond !== remaining) playSFX.tick();
+  tickSecond = remaining;
+}
+function entryDialog(mode, initialCode = '') {
+  const name = readStorage('spyhaz_name', '');
+  showModal(mode === 'create' ? 'ODA OLUŞTUR' : 'ODAYA KATIL',
+    '<form id="entry-form"><label class="input-label" for="player-name">Adın</label><input class="input" id="player-name" name="name" required minlength="2" maxlength="20" autocomplete="nickname" value="' + e(name) + '">' +
+    (mode === 'join' ? '<label class="input-label" for="room-code">Oda kodu</label><input class="input" id="room-code" name="code" required maxlength="9" autocomplete="off" placeholder="ABC-DEF" value="' + e(initialCode) + '">' : '') +
+    '<p id="entry-error" class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">' + (mode === 'create' ? 'Oluştur' : 'Katıl') + '</button></form>', { onMount(overlay) {
+      overlay.querySelector('#entry-form').onsubmit = async event => {
+        event.preventDefault();
+        const form = event.currentTarget, button = form.querySelector('button[type=submit]');
+        if (!form.reportValidity()) return;
+        const name = form.elements.name.value.trim();
+        button.disabled = true; overlay.querySelector('#entry-error').textContent = '';
+        try {
+          const code = mode === 'join' ? normalizeCode(form.elements.code.value) : '';
+          writeStorage('spyhaz_name', name);
+          await enterRoom(mode, name, code);
+          closeModal();
+        } catch (error) { overlay.querySelector('#entry-error').textContent = error.name === 'TimeoutError' ? 'Yanıt gecikti. Aynı düğmeyle güvenle tekrar deneyebilirsin.' : error.message; }
+        finally { button.disabled = false; }
+      };
+    } });
+}
+function settingsDialog(s) {
+  showModal('TUR AYARLARI', '<form id="settings-form"><label class="input-label" for="duration">Süre (dakika)</label><input class="input" id="duration" type="number" min="1" max="30" step="1" value="' + s.settings.duration / 60 + '">' +
+    action('Önerilen süreyi kullan · ' + recommendedDuration(s.players.filter(p => p.connected).length) / 60 + ' dk', 'recommended') +
+    '<label class="input-label" for="spy-count">Casus sayısı</label><select class="input" id="spy-count"><option value="1">1 casus</option><option value="2"' + (s.settings.spyCount === 2 ? ' selected' : '') + '>2 casus · en az 7 bağlı oyuncu</option></select>' +
+    '<p class="recovery-hint">İki casus birbirini tanımaz. Birini yakalamak yeterli.</p><label class="setting-check"><input type="checkbox" id="professions"' + (s.settings.professions ? ' checked' : '') + '> Mesleklerle oyna</label><p class="recovery-hint">Kapalıyken yalnızca konumu görürsünüz. Meslekler açılırsa kalabalıkta aynı meslek tekrar edebilir.</p><button class="btn btn-primary" type="submit">Ayarları kaydet</button></form>', { onMount(overlay) {
+    overlay.querySelector('[data-action=recommended]').onclick = event => { event.preventDefault(); overlay.querySelector('#duration').value = recommendedDuration(s.players.filter(p => p.connected).length) / 60; };
+    overlay.querySelector('#settings-form').onsubmit = async event => {
+      event.preventDefault();
+      if (!event.currentTarget.reportValidity()) return;
+      const button = event.currentTarget.querySelector('button[type=submit]'); button.disabled = true;
+      try { await updateSettings({ duration: Number(overlay.querySelector('#duration').value) * 60, spyCount: Number(overlay.querySelector('#spy-count').value), professions: overlay.querySelector('#professions').checked }); closeModal(); }
+      catch (error) { showToast(error.message, 'error'); }
+      finally { button.disabled = false; }
+    };
+  } });
+}
+function selectPlayer(s, mode) {
+  const candidates = s.players.filter(p => s.game.participantIds.includes(p.id) && p.id !== s.playerId);
+  showModal('KİMİ SUÇLUYORSUN?', '<p>Şüpheli dışındaki oyuncular evet/hayır oyu verecek. Bu tur yalnızca bir suçlama başlatabilirsin.</p><div class="question-targets">' +
+    candidates.map(p => '<button class="btn btn-primary" data-suspect="' + e(p.id) + '">' + e(p.name) + '</button>').join('') + '</div>', { onMount(overlay) {
+      overlay.querySelectorAll('[data-suspect]').forEach(button => button.onclick = async () => { if (await perform('vote:accuse', { suspectId: button.dataset.suspect }, button)) closeModal(); });
+    } });
+}
+function guessDialog(s) {
+  showModal('TEK KONUM TAHMİNİN', '<p>Onayladığında casus olduğunu açıklarsın. Yanlış tahmin geri alınamaz.</p><form id="guess-form"><label class="input-label" for="guess-location">Konum</label><select class="input" id="guess-location" required><option value="">Bir konum seç</option>' +
+    s.game.locations.map(loc => '<option value="' + loc.id + '">' + e(loc.emoji + ' ' + loc.name) + '</option>').join('') +
+    '</select><button class="btn btn-danger btn-block" type="submit">Kimliğimi açıkla ve tahmin et</button></form>', { onMount(overlay) {
+      overlay.querySelector('#guess-form').onsubmit = async event => { event.preventDefault(); if (!event.currentTarget.reportValidity()) return;
+        if (await perform('spy:guess', { locationId: Number(overlay.querySelector('#guess-location').value) }, event.currentTarget.querySelector('button'))) closeModal();
+      };
+    } });
+}
+function presetsDialog() {
+  openPresets({ getSettings: () => getState().snapshot.settings, applySettings: updateSettings });
+}
+function historyDialog() {
+  showModal('OYUN GEÇMİŞİM', getHistory().map(g => '<div class="history-item"><strong>' + e(g.location?.emoji || '📍') + ' ' + e(g.location?.name || '?') + '</strong><span>' + e(g.isSpy ? 'Casus' : 'Oyuncu') + ' · ' + e(reasonText[g.reason] || g.reason || '') + '</span></div>').join('') || '<p>Oynadığın turlar bu tarayıcıda görünecek.</p>');
+}
+app.addEventListener('click', async event => {
+  const button = event.target.closest('[data-action]');
+  if (!button || button.disabled) return;
+  const s = getState().snapshot, a = button.dataset.action;
+  if (a === 'tutorial') return showTutorial();
+  if (a === 'create' || a === 'join') return entryDialog(a);
+  if (a === 'history') return historyDialog();
+  if (a === 'resume') return restoreSession();
+  if (!s) return;
+  if (a === 'leave') {
+    if (connectionStatus() === 'ready' && !await perform('room:leave', {}, button)) return;
+    endSession(); setState({ snapshot: null, players: [], roomCode: null }); lastSignature = ''; closeModal(); renderHome(); return;
+  }
+  if (a === 'code') { ui.showCode = !ui.showCode; lastSignature = ''; return renderSnapshot(s); }
+  if (a === 'copy') {
+    const link = new URL(window.location.pathname, window.location.origin); link.searchParams.set('code', s.code);
+    try { await navigator.clipboard.writeText(link.href); showToast('Davet bağlantısı kopyalandı.'); }
+    catch { showModal('DAVET BAĞLANTISI', '<input class="input" readonly aria-label="Davet bağlantısı" value="' + e(link.href) + '">'); }
+    return;
+  }
+  if (a === 'settings') return settingsDialog(s);
+  if (a === 'locations') return openLocationManager(s.settings.enabledLocationIds, ids => updateSettings({ enabledLocationIds: ids }));
+  if (a === 'presets') return presetsDialog(s);
+  if (a === 'role') { ui.roleVisible = !ui.roleVisible; lastSignature = ''; return renderSnapshot(s); }
+  if (a === 'accuse') return selectPlayer(s);
+  if (a === 'guess') return guessDialog(s);
+  if (a === 'kickChat') {
+    setState({ kickChatVisible: !getState().kickChatVisible, kickChatViewerId: s.playerId });
+    lastSignature = ''; return renderSnapshot(s);
+  }
+  if (a === 'eliminate') {
+    const set = eliminationSet(s), id = Number(button.dataset.location);
+    if (set.has(id)) set.delete(id); else set.add(id);
+    writeStorage('spyhaz_eliminations_' + s.game.id, JSON.stringify([...set]));
+    button.classList.toggle('eliminated', set.has(id)); button.setAttribute('aria-pressed', String(set.has(id))); return;
+  }
+  if (a === 'abort') return showModal('TURU İPTAL ET', '<p>Bu tur sonuçlandırılmadan kapanır. Kimseye puan yazılmaz.</p><button class="btn btn-danger" id="confirm-abort">Turu puansız iptal et</button>', { onMount(overlay) { overlay.querySelector('#confirm-abort').onclick = async event => { if (await perform('host:abort', {}, event.target)) closeModal(); }; } });
+  if (a === 'ready') { ui.roleVisible = false; lastSignature = ''; renderSnapshot(s); }
+  const target = document.getElementById('host-player')?.value;
+  const commands = {
+    start: ['game:start'], ready: ['game:ready'], forceReady: ['host:forceReady'],
+    target: ['question:select', { targetId: button.dataset.player }], questionDone: ['question:done'], skip: ['host:skip'], skipPlayer: ['host:skip', { playerId: document.getElementById('skip-player')?.value }],
+    pause: ['timer:toggle'], transfer: ['host:transfer', { playerId: target }], kick: ['host:kick', { playerId: target }],
+    voteYes: ['vote:cast', { accept: true }], voteNo: ['vote:cast', { accept: false }],
+    nominate: ['vote:cast', { suspectId: button.dataset.player }], lobby: ['game:lobby'],
+  };
+  if (commands[a]) await perform(commands[a][0], commands[a][1] || {}, button);
+});
+app.addEventListener('input', event => {
+  if (event.target.id === 'lobby-duration') {
+    const label = document.getElementById('lobby-duration-label');
+    if (label) label.textContent = event.target.value + ' dakika';
+  }
+});
+app.addEventListener('change', async event => {
+  const input = event.target;
+  const changes = {
+    'lobby-duration': { duration: Number(input.value) * 60 },
+    'lobby-spy-count': { spyCount: Number(input.value) },
+    'lobby-professions': { professions: input.checked },
+  };
+  if (!changes[input.id]) return;
+  input.disabled = true;
+  try { await updateSettings(changes[input.id]); }
+  catch (error) { showToast(error.message, 'error'); }
+  lastSignature = '';
+  const snapshot = getState().snapshot;
+  if (snapshot) renderSnapshot(snapshot);
+});
+window.addEventListener('spyhaz:connection', event => paintConnection(event.detail.error));
+app.addEventListener('toggle', event => {
+  if (event.target.id === 'room-roster') ui.rosterOpen = event.target.open;
+}, true);
+compactQuery?.addEventListener?.('change', event => {
+  ui.compact = event.matches; ui.rosterOpen = !event.matches; lastSignature = '';
+  const s = getState().snapshot; if (s) renderSnapshot(s);
+});
+function viewportHeight() { document.documentElement.style.setProperty('--viewport-height', Math.round(window.visualViewport?.height || window.innerHeight) + 'px'); }
+window.visualViewport?.addEventListener('resize', viewportHeight);
+window.addEventListener('resize', viewportHeight); viewportHeight();
+window.addEventListener('spyhaz:sessionEnded', event => {
+  setState({ snapshot: null, players: [], roomCode: null }); lastSignature = ''; closeModal(); renderHome(); showToast(event.detail, 'warning');
+});
+window.addEventListener('spyhaz:snapshot', event => {
+  const s = event.detail; clockOffset = s.serverNow - Date.now();
+  const previousId = ui.roundId;
+  if (s.state === 'RESULT' && s.game?.result && s.game.result.winner !== 'CANCELLED') saveGameToHistory({
+    id: s.game.id, location: s.game.result.location, role: s.game.profession, isSpy: s.game.isSpy,
+    winner: s.game.result.winner, reason: s.game.result.reason, playerCount: s.game.participantIds.length,
+  });
+  if (previousId !== s.game?.id && s.state === 'ROLE_REVEAL') playSFX.start();
+  renderSnapshot(s);
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && ui.roleVisible) { ui.roleVisible = false; lastSignature = ''; const s = getState().snapshot; if (s) renderSnapshot(s); }
+});
+const mute = document.getElementById('mute-toggle');
+mute.setAttribute('aria-label', 'Ses efektlerini aç veya kapat'); mute.textContent = getMuteState() ? '🔇' : '🔊';
+mute.onclick = () => { const muted = toggleMute(); mute.textContent = muted ? '🔇' : '🔊'; mute.setAttribute('aria-pressed', String(muted)); };
+renderHome();
+setInterval(updateClocks, 1000);
+const invite = new URLSearchParams(window.location.search).get('code');
+if (invite) {
+  let code;
+  try { code = normalizeCode(invite); } catch { /* show the entered code for correction */ }
+  if (!code || !restoreSession(code)) entryDialog('join', invite);
+} else restoreSession();

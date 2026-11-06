@@ -1,0 +1,113 @@
+/* Original theme and screen classes stay in the original stylesheets. */
+[hidden] { display:none !important; }
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--accent-cyan); outline-offset:3px; }
+#connection-banner { position:sticky;top:0;z-index:400;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:10px 16px;background:var(--bg-secondary);border-bottom:1px solid var(--warning);font-size:var(--fs-sm); }
+.recovery-hint { color:var(--text-secondary);font-size:var(--fs-sm);line-height:1.65;margin-top:12px; }
+.recovery-notice { border:1px solid var(--border-glow);background:rgba(0,229,255,.05);padding:12px 16px;border-radius:var(--radius-md);margin-bottom:16px;font-size:var(--fs-sm); }
+.recovery-tools summary { cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:var(--fs-sm);color:var(--text-secondary); }
+.recovery-tools-body { display:flex;flex-direction:column;gap:10px; }
+.compact-select { width:auto;min-width:105px;padding:4px 8px; }
+.settings-check { flex-direction:row;justify-content:space-between;align-items:center; }
+.settings-check input { width:20px;height:20px;accent-color:var(--accent-cyan); }
+.form-error { min-height:20px;color:var(--danger);font-size:var(--fs-sm);margin:10px 0; }
+.question-flow { display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin:20px 0;font-size:var(--fs-md); }
+.question-arrow { color:var(--accent-cyan);font-size:24px; }
+.question-targets,.question-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:14px; }
+.question-prompt { text-align:center;padding:12px 0; }
+.phase-clock { display:block;color:var(--warning);text-align:center;margin-bottom:18px;font-family:var(--font-pixel);font-size:var(--fs-sm); }
+.game-topbar-center { display:flex;align-items:center;gap:16px; }
+.game-topbar-center .timer-display { font-size:2.5rem;line-height:1.2; }
+.lobby-actions .btn[data-action=start] { font-family:var(--font-pixel); }
+.result-actions { display:flex;flex-direction:column;gap:12px;margin-top:20px; }
+.result-title { line-height:1.8; }
+.home-footer-link { font:inherit; }
+.home-actions .btn[data-action=resume] { margin-top:4px;font-size:9px; }
+.home-screen .home-decoration { pointer-events:none; }
+.modal-content { max-height:92vh;max-height:92dvh; }
+.modal-body { max-height:72vh;overflow:auto; }
+.input-group { margin-bottom:16px; }
+.input-label { display:block;margin:12px 0 8px; }
+.settings-form .btn,.join-form .btn { margin-top:12px; }
+.tutorial-controls { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px; }
+.tutorial-scene { padding:18px;margin:12px 0;min-height:160px; }
+.demo-cards,.demo-chain,.demo-ballot,.demo-map { display:flex;flex-wrap:wrap;gap:10px;justify-content:center; }
+.demo-card { display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px;border:1px solid var(--accent-cyan);border-radius:var(--radius-md);font-size:28px; }
+.demo-card strong,.demo-card small { font-size:var(--fs-sm); }
+.demo-secret { border-color:var(--danger); }
+.demo-bubble { margin:10px 0;padding:12px;border-radius:var(--radius-md);background:rgba(0,229,255,.09); }
+.demo-bubble.answer { margin-left:20px;background:rgba(124,77,255,.1); }
+.demo-chain span,.demo-map span { padding:10px;border:1px solid var(--border-color);border-radius:var(--radius-sm); }
+.demo-ballot { flex-direction:column;align-items:center; }
+.demo-finish { text-align:center;font-size:32px; }
+.preset-form { display:flex;flex-direction:column;gap:12px; }
+.preset-preview { padding:14px;border:1px solid var(--border-glow);border-radius:var(--radius-md);background:var(--bg-secondary);line-height:1.7; }
+.preset-save-section { margin-top:18px;border-top:1px solid var(--border-color);padding-top:12px; }
+.preset-save-section summary { cursor:pointer;min-height:44px;display:flex;align-items:center; }
+.active-preset-label { color:var(--accent-cyan);font-size:var(--fs-sm);overflow-wrap:anywhere; }
+.settings-status { min-height:1.5em;margin-top:12px;font-size:12px;color:var(--text-secondary); }
+.home-release { color:var(--text-secondary);font-size:11px;margin-top:18px; }
+.roster-panel > summary { cursor:pointer;min-height:32px;list-style:revert; }
+.roster-panel:not([open]) > summary { margin-bottom:0; }
+.roster-connected { margin-left:auto;font-family:var(--font-body);color:var(--text-secondary);font-size:12px; }
+.lobby-col,.game-main,.game-sidebar,.card { min-width:0; }
+.question-targets .btn { white-space:normal;overflow-wrap:anywhere; }
+button,summary,select,input[type=checkbox] { touch-action:manipulation; }
+@media(max-width:768px) {
+  .home-screen,.lobby-screen,.game-screen,.result-screen { min-height:var(--viewport-height,100vh); }
+  .lobby-screen,.game-screen { padding:12px; }
+  .lobby-screen,.game-screen,.result-screen { padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+  #mute-toggle { bottom:calc(12px + env(safe-area-inset-bottom));left:calc(12px + env(safe-area-inset-left));min-width:44px;min-height:44px; }
+  .lobby-header { margin-bottom:18px; }
+  .lobby-content { display:flex;flex-direction:column;gap:14px;animation:none; }
+  .lobby-col:nth-child(2) { order:0; }
+  .lobby-col:first-child { order:1; }
+  .lobby-col:nth-child(3) { order:2; }
+  .lobby-col,.h-full { height:auto; }
+  .room-code-display { max-width:100%;gap:8px;padding:10px; }
+  .room-code-text { font-size:clamp(16px,4.7vw,24px);letter-spacing:2px;min-width:0; }
+  .room-code-toggle,.room-code-copy-btn { width:44px;height:44px;flex-shrink:0; }
+  .game-content { display:flex;flex-direction:column;gap:14px;animation:none; }
+  .game-sidebar-left,.game-main { display:contents; }
+  .role-card-container { order:0; }
+  .question-section { order:1; }
+  .spy-actions { order:2; }
+  .location-grid-container { order:3; }
+  .game-players-card { order:4; }
+  .game-chat { order:5; }
+  .game-content .recovery-tools { order:6; }
+  .game-sidebar-right { order:7; }
+  .game-topbar { display:grid;grid-template-columns:1fr auto;margin-bottom:14px;animation:none; }
+  .game-topbar-right { grid-column:1/-1;justify-content:center; }
+  .game-topbar-right .btn { flex:1 1 auto;font-size:11px;padding:10px; }
+  .game-topbar-center .timer-display { font-size:1.8rem; }
+  .role-card { padding:16px; }
+  .role-card-hidden-icon { font-size:26px; }
+  .question-section { padding:18px; }
+  .question-section > [data-action=ready] { width:100%;min-height:48px;white-space:normal;font-size:12px; }
+  .question-targets .btn { flex:1 1 120px; }
+  .modal-overlay { padding:10px; }
+  .modal-content { width:100%;max-height:calc(var(--viewport-height,100vh) - 20px); }
+  .modal-body { max-height:calc(var(--viewport-height,100vh) - 130px);overscroll-behavior:contain; }
+  .modal-content .input,.lobby-settings .input,.chat-input { font-size:16px; }
+  .location-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .location-card { min-width:0; }
+  .location-card-name { font-size:12px;white-space:normal;overflow-wrap:anywhere;line-height:1.4; }
+  .card,.modal-content,.notebook-drawer { backdrop-filter:none;-webkit-backdrop-filter:none; }
+  #scanline-overlay { opacity:.3; }
+  .home-decoration,.home-logo .spy-emoji,.home-subtitle { animation:none;filter:none; }
+  .home-screen { padding:24px 16px 80px; }
+  .home-footer { flex-wrap:wrap;justify-content:center;gap:18px; }
+  .game-topbar { gap:12px; }
+  .game-topbar-right { flex-wrap:wrap;gap:6px; }
+  .game-topbar-right .btn { min-height:40px; }
+  .game-players-list { max-height:260px;overflow:auto; }
+  .question-targets .btn { min-height:44px; }
+  .lobby-col .btn,.input { min-height:44px; }
+  .location-card { min-height:70px; }
+  .notebook-tab-hint { display:none; }
+  .modal-body { font-size:14px; }
+  .modal-close { min-width:40px;min-height:40px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation:none !important;transition:none !important;scroll-behavior:auto !important; }
+}

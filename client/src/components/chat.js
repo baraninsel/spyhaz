@@ -1,6 +1,8 @@
 // Chat Panel Component
-import { getSocket } from '../socket.js';
+import { sendCommand } from '../socket.js';
 import { getState, setState } from '../state.js';
+import { showToast } from './toast.js';
+let sending = false;
 
 export function renderChat(container) {
   const state = getState();
@@ -8,17 +10,17 @@ export function renderChat(container) {
   const panel = document.createElement('div');
   panel.className = 'chat-panel';
   panel.innerHTML = `
-    <div class="chat-header" id="chat-toggle">
+    <button type="button" class="chat-header" id="chat-toggle" aria-label="Sohbeti aç veya kapat">
       <span class="chat-header-title">
         💬 SOHBET
         <span class="chat-unread ${state.unreadCount > 0 ? '' : 'hidden'}" id="chat-unread">${state.unreadCount}</span>
       </span>
       <span class="chat-toggle-icon ${state.chatCollapsed ? 'collapsed' : ''}" id="chat-arrow">▼</span>
-    </div>
+    </button>
     <div class="chat-body ${state.chatCollapsed ? 'collapsed' : ''}" id="chat-body"></div>
     <div class="chat-input-area ${state.chatCollapsed ? 'hidden' : ''}" id="chat-input-area">
-      <input type="text" class="chat-input" id="chat-input" placeholder="Mesaj yaz..." maxlength="300" />
-      <button class="chat-send-btn" id="chat-send">▶</button>
+      <input type="text" class="chat-input" id="chat-input" aria-label="Sohbet mesajı" placeholder="Mesaj yaz..." maxlength="300" />
+      <button class="chat-send-btn" id="chat-send" data-server-action data-blocked="${sending}" aria-label="Mesajı gönder">▶</button>
     </div>
   `;
 
@@ -46,12 +48,21 @@ export function renderChat(container) {
   const input = panel.querySelector('#chat-input');
   const sendBtn = panel.querySelector('#chat-send');
 
-  function sendMessage() {
+  async function sendMessage() {
     const message = input.value.trim();
-    if (!message) return;
-    getSocket().emit('chat:send', { message });
-    input.value = '';
-    input.focus();
+    if (!message || sending) return;
+    sending = true; sendBtn.disabled = true; sendBtn.dataset.blocked = 'true';
+    try {
+      await sendCommand('chat:send', { message });
+      const current = document.getElementById('chat-input');
+      if (current?.value.trim() === message) current.value = '';
+      current?.focus();
+    } catch (error) { showToast(error.message, 'error'); }
+    finally {
+      sending = false;
+      const current = document.getElementById('chat-send');
+      if (current) { current.dataset.blocked = 'false'; current.disabled = false; }
+    }
   }
 
   sendBtn.addEventListener('click', sendMessage);
@@ -68,11 +79,16 @@ function appendMessage(container, msg) {
   const div = document.createElement('div');
   div.className = 'chat-message';
   div.innerHTML = `
-    <span class="chat-msg-sender" style="color: ${isMe ? 'var(--accent-cyan)' : 'var(--accent-purple-light)'}">${msg.senderName}:</span>
+    <span class="chat-msg-sender" style="color: ${isMe ? 'var(--accent-cyan)' : 'var(--accent-purple-light)'}">${escapeHtml(msg.senderName)}:</span>
     <span class="chat-msg-text">${escapeHtml(msg.message)}</span>
     <span class="chat-msg-time">${time}</span>
   `;
   container.appendChild(div);
+}
+
+export function renderChatMessages(container, messages) {
+  container.innerHTML = '';
+  messages.forEach(message => appendMessage(container, message));
 }
 
 export function handleNewChatMessage(msg) {
